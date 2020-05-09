@@ -1,17 +1,42 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-    </PropertyGroup>
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+    <AssemblyName>release-notes</AssemblyName>
+    <RootNamespace>ReleaseNotes</RootNamespace>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>release-notes</ToolCommandName>
 
-    <ItemGroup>
-        <Compile Include="Program.fs" />
-    </ItemGroup>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\build\keys\keypair.snk</AssemblyOriginatorKeyFile>
 
-    <ItemGroup>
-      <PackageReference Include="Argu" Version="6.0.0" />
-      <PackageReference Include="Octokit" Version="0.43.0" />
-    </ItemGroup>
+    <PackageIcon>nuget-icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/nullean/release-notes</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/nullean/release-notes</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/nullean/release-notes/releases</PackageReleaseNotes>
+
+    <Title>release-notes: a dotnet tool to generate release notes from GitHub</Title>
+    <Description>Generate release notes from closed github issues and PR's through the power of version labels</Description>
+
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <Content Include="..\..\nuget-icon.png" CopyToOutputDirectory="PreserveNewest">
+      <Link>nuget-icon.png</Link>
+      <Pack>True</Pack>
+      <PackagePath>nuget-icon.png</PackagePath>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Program.fs"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Argu" Version="6.0.0"/>
+    <PackageReference Include="Octokit" Version="0.43.0"/>
+  </ItemGroup>
 
 </Project>
