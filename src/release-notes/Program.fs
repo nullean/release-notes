@@ -7,7 +7,6 @@ open System.Text
 open System.Text.RegularExpressions
 open Octokit
 
-
 type Arguments =
     | [<MainCommand; Mandatory; CliPrefix(CliPrefix.None)>] Repository of owner:string * repository_name:string
     | Label of label:string * description:string
