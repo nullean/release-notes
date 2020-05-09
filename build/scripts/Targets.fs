@@ -45,10 +45,7 @@ let private release (arguments:ParseResults<Arguments>) =
         let p = Paths.Output.GetFiles("*.nupkg") |> Seq.sortByDescending(fun f -> f.CreationTimeUtc) |> Seq.head
         Paths.RootRelative p.FullName
     let project = Paths.RootRelative Paths.ToolProject.FullName
-    let validate =
-        let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
-        let validationArgs = ["-v"; currentVersion; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"]
-        exec "dotnet" (dotnetRun @ ["--"; nugetPackage;] @ validationArgs)
+    let validate = exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersion; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"]
     
     printfn "release"
     
