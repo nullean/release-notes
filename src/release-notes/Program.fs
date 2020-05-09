@@ -1,4 +1,5 @@
 ﻿open Argu
+open Fake.Core
 open System;
 open System.Collections.Generic
 open System.Linq
@@ -14,6 +15,7 @@ type Arguments =
     | Version of string
     | OldVersion of string
     | ReleaseLabel of string
+    | ReleaseLabelFormat of string
     | UncategorizedHeader of string
     with
     interface IArgParserTemplate with
@@ -25,6 +27,7 @@ type Arguments =
             | Version _ -> "The version that we are generating release notes for"
             | OldVersion _ -> "The previous version to generates release notes since"
             | ReleaseLabel _ -> "The version label on the issues / github prs, defaults to v[VERSION]"
+            | ReleaseLabelFormat _ -> "x"
             | UncategorizedHeader _ -> "The header to use in the markdown for uncategorized issues/prs"
 
 type GitHub(owner, repository) =
@@ -148,7 +151,29 @@ let getClosedIssues (config:ReleaseNotesConfig) =
             
 let run (config:ReleaseNotesConfig) =
     let gitHub = config.GitHub
-    let oldVersion = config.OldVersion |> Option.defaultValue ""
+    
+    let client = GitHubClient(ProductHeaderValue("ReleaseNotesGenerator"))
+    client.Credentials <- 
+        match config.Token with
+        | Some token -> Credentials(token)
+        | None -> Credentials.Anonymous
+    
+    let oldVersion =
+        match config.OldVersion with
+        | Some v -> v
+        | None ->
+            let semVerVersion = SemVer.parse config.Version
+            let foundOldVersion =
+                client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Seq.filter(fun t -> SemVer.isValid t.TagName)
+                |> Seq.map(fun t -> SemVer.parse t.TagName)
+                |> Seq.filter(fun v -> v < semVerVersion)
+                |> Seq.sortByDescending(fun v -> v)
+                |> Seq.tryHead
+            match foundOldVersion with | Some v -> v.ToString() | _ -> failwith "No previous version found!"
+                
     try      
         use writer = Console.Out
         writer.WriteLine(sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
