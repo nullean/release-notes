@@ -1,0 +1,39 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "release-notes", "src\release-notes\release-notes.fsproj", "{AA3C8883-8C15-46C2-AF82-BEBF334F51A0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{AA8D3BC4-CD54-4B7D-B8F2-2DEFE79DB49B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "build", "build", "{31B8128C-F882-4799-A3B4-8D65A31F5CDC}"
+ProjectSection(SolutionItems) = preProject
+	global.json = global.json
+	LICENSE = LICENSE
+	nuget-icon.png = nuget-icon.png
+	.editorconfig = .editorconfig
+	Directory.Build.props = Directory.Build.props
+	.github\workflows\ci.yml = .github\workflows\ci.yml
+	README.md = README.md
+EndProjectSection
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "scripts", "build\scripts\scripts.fsproj", "{42B72CA3-F9F6-44DA-8642-657D2A5E1A81}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AA3C8883-8C15-46C2-AF82-BEBF334F51A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA3C8883-8C15-46C2-AF82-BEBF334F51A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA3C8883-8C15-46C2-AF82-BEBF334F51A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA3C8883-8C15-46C2-AF82-BEBF334F51A0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{42B72CA3-F9F6-44DA-8642-657D2A5E1A81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{42B72CA3-F9F6-44DA-8642-657D2A5E1A81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{42B72CA3-F9F6-44DA-8642-657D2A5E1A81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{42B72CA3-F9F6-44DA-8642-657D2A5E1A81}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{AA3C8883-8C15-46C2-AF82-BEBF334F51A0} = {AA8D3BC4-CD54-4B7D-B8F2-2DEFE79DB49B}
+		{42B72CA3-F9F6-44DA-8642-657D2A5E1A81} = {31B8128C-F882-4799-A3B4-8D65A31F5CDC}
+	EndGlobalSection
+EndGlobal
