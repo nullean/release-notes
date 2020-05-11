@@ -1,7 +1,9 @@
-﻿open Argu
+﻿open System
+open Argu
 open Fake.Core
 open System;
 open System.Collections.Generic
+open System.IO
 open System.Linq
 open System.Text
 open System.Text.RegularExpressions
@@ -16,6 +18,7 @@ type Arguments =
     | OldVersion of string
     | ReleaseLabelFormat of string
     | UncategorizedHeader of string
+    | Output of string
     with
     interface IArgParserTemplate with
         member s.Usage =
@@ -28,6 +31,7 @@ type Arguments =
             | ReleaseLabelFormat _ ->
                 sprintf "The release label format, defaults to vVERSION, VERSION will be replaced by the actual version" 
             | UncategorizedHeader _ -> "The header to use in the markdown for uncategorized issues/prs"
+            | Output _ -> "write the release notes to a file as well as standard out"
 
 type GitHub(owner, repository) =
     member this.Owner = owner
@@ -45,6 +49,7 @@ type ReleaseNotesConfig =
         ReleaseLabelFormat: string 
         UncategorizedLabel: string 
         UncategorizedHeader: string 
+        Output: string option
     }
 
 
@@ -149,7 +154,21 @@ let getClosedIssues (config:ReleaseNotesConfig) =
     |> Async.RunSynchronously
     |> filterByPullRequests issueNumberRegex
     |> groupByLabel config
-            
+
+type OutputWriter(output: string option) =
+    let stdout = Console.Out
+    let sb = new StringBuilder()
+    member this.EmptyLine () =
+        stdout.WriteLine()
+        sb.AppendLine() |> ignore
+    member this.WriteLine (s:string) =
+        stdout.WriteLine(s)
+        sb.AppendLine(s) |> ignore
+    interface IDisposable with 
+        member __.Dispose() =
+            stdout.Dispose()
+            output |> Option.iter (fun f -> File.WriteAllText(f, sb.ToString()))
+        
 let run (config:ReleaseNotesConfig) =
     let gitHub = config.GitHub
     
@@ -176,16 +195,16 @@ let run (config:ReleaseNotesConfig) =
             match foundOldVersion with | Some v -> v.ToString() | _ -> failwith "No previous version found!"
                 
     try      
-        use writer = Console.Out
-        writer.WriteLine(sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
-        writer.WriteLine()
+        use writer = new OutputWriter(config.Output)
+        writer.WriteLine (sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
+        writer.EmptyLine ()
         let closedIssues = getClosedIssues config
         for closedIssue in closedIssues do
             config.Labels.[closedIssue.Key] |> sprintf "## %s" |> writer.WriteLine    
-            writer.WriteLine()
+            writer.EmptyLine ()
             for issue in closedIssue.Value do
                 sprintf "- %s" issue.Title |> writer.WriteLine
-            writer.WriteLine()
+            writer.EmptyLine ()
         
         let releasedLabel = releaseLabel config.Version config.ReleaseLabelFormat  
         sprintf "### [View the full list of issues and PRs](%sissues?utf8=%%E2%%9C%%93&q=label%%3A%s)" config.GitHub.Url releasedLabel
@@ -230,7 +249,8 @@ let main argv =
                 OldVersion = oldVersion
                 ReleaseLabelFormat = p.TryGetResult ReleaseLabelFormat |> Option.defaultValue "vVERSION"
                 UncategorizedLabel = uncategorizedLabel
-                UncategorizedHeader = uncategorizedHeader 
+                UncategorizedHeader = uncategorizedHeader
+                Output = p.TryGetResult Output
             }
             run config
         with e ->
