@@ -17,6 +17,7 @@ type Arguments =
     | [<CliPrefix(CliPrefix.None);SubCommand>] Publish
     
     | [<Inherit;AltCommandLine("-s")>] SingleTarget of bool
+    | [<Inherit>] Token of string 
 with
     interface IArgParserTemplate with
         member this.Usage =
@@ -27,6 +28,7 @@ with
             | Publish _ -> "Runs the full release"
             
             | SingleTarget _ -> "Runs the provided sub command without running their dependencies"
+            | Token _ -> "Token to be used to authenticate with github"
             
             | PristineCheck  
             | GeneratePackages

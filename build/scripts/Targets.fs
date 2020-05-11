@@ -8,7 +8,6 @@ open CommandLine
 open Fake.Tools.Git
 open ProcNet
 
-
     
 let exec binary args =
     let r = Proc.Exec (binary, args |> List.map (fun a -> sprintf "\"%s\"" a) |> List.toArray)
@@ -51,7 +50,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
         Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion)
     let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
     let tokenArgs =
-        match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
+        match arguments.TryGetResult Token with
         | None -> []
         | Some token -> ["--token"; token;]
     let validationArgs =
@@ -70,7 +69,7 @@ let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
     let currentVersion = currentVersion.Value
     let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
     let tokenArgs =
-        match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
+        match arguments.TryGetResult Token with
         | None -> []
         | Some token -> ["--token"; token;]
     let releaseArgs =
