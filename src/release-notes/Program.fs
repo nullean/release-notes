@@ -14,10 +14,10 @@ let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient
         let existing =
             try
                 Some <|
-                    (client.Issue.Labels.Get(config.GitHub.Owner, config.GitHub.Repository, config.Version)
+                    (client.Issue.Labels.Get(config.GitHub.Owner, config.GitHub.Repository, label)
                     |> Async.AwaitTask
                     |> Async.RunSynchronously)
-            finally ignore()
+            with _ -> None
             
         match existing with
         | Some s -> ignore()
@@ -46,7 +46,7 @@ let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body
                 (client.Repository.Release.Get(config.GitHub.Owner, config.GitHub.Repository, config.Version)
                 |> Async.AwaitTask
                 |> Async.RunSynchronously)
-        finally ignore()
+        with _ -> None
             
     match existing with
     | Some s ->
