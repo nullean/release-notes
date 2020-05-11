@@ -53,7 +53,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let tokenArgs =
         match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
         | None -> []
-        | Some token -> ["--token"; token; "--newversionlabels true"]
+        | Some token -> ["--token"; token;]
     let validationArgs =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["--version"; currentVersion
@@ -65,18 +65,27 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
         
     exec "dotnet" (dotnetRun @ ["--"] @ validationArgs) |> ignore
     
-let private release (arguments:ParseResults<Arguments>) =
-    let output = Paths.RootRelative Paths.Output.FullName
-    exec "dotnet" ["pack"; "-c"; "Release"; "-o"; output] |> ignore
+let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
+    let project = Paths.RootRelative Paths.ToolProject.FullName
+    let currentVersion = currentVersion.Value
+    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
+    let tokenArgs =
+        match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
+        | None -> []
+        | Some token -> ["--token"; token;]
+    let validationArgs =
+        (Paths.Repository.Split("/") |> Seq.toList)
+        @ ["--version"; currentVersion
+           "--create"; "enhancements"; "New Features"
+           "--label"; "bug"; "Bug Fixes"
+           "--label"; "documentation"; "Docs Improvements"
+        ] @ tokenArgs
+        
+    exec "dotnet" (dotnetRun @ ["--"] @ validationArgs) |> ignore
     
-let private publish (arguments:ParseResults<Arguments>) =
-    // TODO
-    // run release notes generator
-    // run assembly-differ github comments
-    // Combine the two outputs and publish
-    // git tag -a version -m <combined output?"
-    // git push --tags
-    printfn "publish" 
+let private release (arguments:ParseResults<Arguments>) = printfn "release"
+    
+let private publish (arguments:ParseResults<Arguments>) = printfn "publish" 
 
 let Setup (parsed:ParseResults<Arguments>) (subCommand:Arguments) =
     let step (name:string) action = Targets.Target(name, new Action(fun _ -> action(parsed)))
@@ -103,9 +112,8 @@ let Setup (parsed:ParseResults<Arguments>) (subCommand:Arguments) =
         (Some [GeneratePackages.Name; ValidatePackages.Name; GenerateReleaseNotes.Name])
         <| fun _ -> release parsed
         
-    step PublishRelease.Name <| fun _ -> ignore()
-    step PublishNewLabels.Name <| fun _ -> ignore()
+    step CreateReleaseOnGithub.Name createReleaseOnGithub 
     cmd Publish.Name
         (Some [Release.Name])
-        None
+        (Some [CreateReleaseOnGithub.Name; ])
         <| fun _ -> publish parsed

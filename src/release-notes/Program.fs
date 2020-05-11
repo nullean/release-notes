@@ -4,6 +4,7 @@ open System
 open Argu
 open Fake.Core
 open Octokit
+open ReleaseNotes
 open ReleaseNotes.Arguments
 
 let private releaseLabel version (format:string) = format.Replace("VERSION", version)
@@ -24,28 +25,57 @@ let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient
     create newMinor
     create newPatch
     
+    
+let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body =
+    let existing =
+        try
+            Some <|
+                (client.Repository.Release.Get(config.GitHub.Owner, config.GitHub.Repository, config.Version)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously)
+        finally ignore()
+            
+    match existing with
+    | Some s ->
+        client.Repository.Release.Edit(
+                config.GitHub.Owner, config.GitHub.Repository, s.Id,
+                ReleaseUpdate(Body=body)) |> ignore
+    | None ->
+        client.Repository.Release.Create(
+                config.GitHub.Owner, config.GitHub.Repository,
+                NewRelease(config.Version, Body=body)) |> ignore
+    
+    
 let private locateOldVersion (config:ReleaseNotesConfig) (client:GitHubClient) =
     match config.OldVersion with
-    | Some v -> v
+    | Some v -> Some v
     | None ->
         let semVerVersion = SemVer.parse config.Version
-        let foundOldVersion =
+        let releases =
             client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository)
             |> Async.AwaitTask
             |> Async.RunSynchronously
+        let foundOldVersion =
+            releases
             |> Seq.filter(fun t -> SemVer.isValid t.TagName)
             |> Seq.map(fun t -> SemVer.parse t.TagName)
             |> Seq.filter(fun v -> v < semVerVersion)
             |> Seq.sortByDescending(fun v -> v)
             |> Seq.tryHead
-        match foundOldVersion with | Some v -> v.ToString() | _ -> failwith "No previous version found!"
+        match releases.Count, foundOldVersion with
+        | 0, _ -> None
+        | _, Some v -> Some (v.ToString())
+        | _ -> failwith "No previous version found!"
                 
 let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
     let releasedLabel = releaseLabel config.Version config.ReleaseLabelFormat  
     let gitHub = config.GitHub
     use writer = new OutputWriter(config.Output)
-    writer.WriteLine (sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
-    writer.EmptyLine ()
+    //oldVersion can be none if the repository has never had a release
+    oldVersion |> Option.iter(fun oldVersion ->
+        writer.WriteLine (sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
+        writer.EmptyLine ()
+    )
     let closedIssues = GithubScanner.getClosedIssues config client releasedLabel
     for closedIssue in closedIssues do
         config.Labels.[closedIssue.Key] |> sprintf "## %s" |> writer.WriteLine    
@@ -55,7 +85,8 @@ let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) 
         writer.EmptyLine ()
     
     sprintf "### [View the full list of issues and PRs](%sissues?utf8=%%E2%%9C%%93&q=label%%3A%s)" config.GitHub.Url releasedLabel
-    |> writer.WriteLine   
+    |> writer.WriteLine
+    writer.ToString()
 
 let run (config:ReleaseNotesConfig) =
     let client = GitHubClient(ProductHeaderValue("ReleaseNotesGenerator"))
@@ -66,8 +97,15 @@ let run (config:ReleaseNotesConfig) =
     
     try      
         let oldVersion = locateOldVersion config client
-        writeReleaseNotes config client oldVersion
-        if (config.NewVersionLabels) then addNewVersionLabels config client
+        match (config.OldVersionOnly) with
+        | true -> 
+            printfn "%s" (oldVersion |> Option.defaultValue "")
+        | _ ->
+           let releaseNotes = writeReleaseNotes config client oldVersion
+           if (config.GenerateReleaseOnGithub) then
+               createRelease config client releaseNotes 
+               addNewVersionLabels config client
+               ignore()
         0
     with
     | ex ->
@@ -95,13 +133,18 @@ let main argv =
             let uncategorizedLabel = "Uncategorized" 
             let uncategorizedHeader = p.TryGetResult UncategorizedHeader |> Option.defaultValue uncategorizedLabel
             
-            let newVersionLabels = p.TryGetResult NewVersionLabels |> Option.defaultValue false
+            let oldVersionOnly = match p.TryGetSubCommand() with | Some FindPreviousVersion -> true | _ -> false 
+            let generateRelease = match p.TryGetSubCommand() with | Some (CreateRelease _) -> true | _ -> false 
             
             let labels =
                 p.GetResults Label @ [(uncategorizedLabel, uncategorizedHeader)]
                 |> Map.ofList
+                
+            let bodyFilePaths =
+                match p.TryGetSubCommand() with
+                | Some (CreateRelease a) -> Some <| a.GetResults BodyFilePath
+                | _ -> None 
             
-            printfn "%A" labels
             let config = {
                 GitHub = GitHubRepository(owner, repos)
                 Labels = labels 
@@ -112,9 +155,11 @@ let main argv =
                 UncategorizedLabel = uncategorizedLabel
                 UncategorizedHeader = uncategorizedHeader
                 Output = p.TryGetResult Output
-                NewVersionLabels = newVersionLabels
                 // TODO parameter
                 LabelColor = "#e3e3e3"
+                OldVersionOnly = oldVersionOnly
+                GenerateReleaseOnGithub = generateRelease
+                ReleaseBodyPaths = bodyFilePaths
             }
             run config
         with e ->

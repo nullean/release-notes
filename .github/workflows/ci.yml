@@ -31,12 +31,15 @@ jobs:
         source-url: https://nuget.pkg.github.com/nullean/index.json
       env:
         NUGET_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+        
     - run: ./build.sh pristinecheck -s true
-      name: pristine check
     - run: ./build.sh build -s true
-      name: build
+      
+    - run: ./build.sh generatepackages -s true
+    - run: ./build.sh validatepackages -s true
+    - run: ./build.sh generatereleasenotes -s true
     - run: ./build.sh release -s true
-      name: prep and validate release artifacts
+
     - name: publish to github package repository
       if: github.event_name == 'push' && startswith(github.ref, 'refs/heads')
       shell: bash
@@ -44,4 +47,9 @@ jobs:
          until dotnet nuget push build/output/*.nupkg -k ${{secrets.GITHUB_TOKEN}} --skip-duplicate --no-symbols true; do echo "Retrying"; sleep 1; done;
     - run: dotnet nuget push build/output/*.nupkg -k ${{secrets.NUGET_ORG_API_KEY}} -s https://api.nuget.org/v3/index.json --skip-duplicate --no-symbols true
       name: release to nuget.org
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/tags')
+      
+    - run: ./build.sh createreleaseongithub -s true
+      if: github.event_name == 'push' && startswith(github.ref, 'refs/tags')
+    - run: ./build.sh publsh -s true
       if: github.event_name == 'push' && startswith(github.ref, 'refs/tags')

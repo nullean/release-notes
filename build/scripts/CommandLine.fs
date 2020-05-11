@@ -13,8 +13,7 @@ type Arguments =
     | [<CliPrefix(CliPrefix.None);Hidden;SubCommand>] GenerateReleaseNotes 
     | [<CliPrefix(CliPrefix.None);SubCommand>] Release
     
-    | [<CliPrefix(CliPrefix.None);Hidden;SubCommand>] PublishRelease 
-    | [<CliPrefix(CliPrefix.None);Hidden;SubCommand>] PublishNewLabels 
+    | [<CliPrefix(CliPrefix.None);Hidden;SubCommand>] CreateReleaseOnGithub 
     | [<CliPrefix(CliPrefix.None);SubCommand>] Publish
     
     | [<Inherit;AltCommandLine("-s")>] SingleTarget of bool
@@ -33,8 +32,7 @@ with
             | GeneratePackages
             | ValidatePackages 
             | GenerateReleaseNotes
-            | PublishRelease 
-            | PublishNewLabels
+            | CreateReleaseOnGithub 
                 -> "Undocumented, dependent target"
     member this.Name =
         match FSharpValue.GetUnionFields(this, typeof<Arguments>) with

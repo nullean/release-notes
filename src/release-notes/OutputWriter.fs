@@ -13,6 +13,7 @@ type OutputWriter(output: string option) =
     member this.WriteLine (s:string) =
         stdout.WriteLine(s)
         sb.AppendLine(s) |> ignore
+    override this.ToString () = sb.ToString()
     interface IDisposable with 
         member __.Dispose() =
             stdout.Dispose()
