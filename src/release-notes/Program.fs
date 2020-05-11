@@ -7,13 +7,13 @@ open System.Text
 open System.Text.RegularExpressions
 open Octokit
 
+
 type Arguments =
     | [<MainCommand; Mandatory; CliPrefix(CliPrefix.None)>] Repository of owner:string * repository_name:string
     | Label of label:string * description:string
     | Token of string
     | Version of string
     | OldVersion of string
-    | ReleaseLabel of string
     | ReleaseLabelFormat of string
     | UncategorizedHeader of string
     with
@@ -25,8 +25,8 @@ type Arguments =
             | Token _ -> "The github token to use, if the issue list is long this may be necessary, defaults to anonymoys"
             | Version _ -> "The version that we are generating release notes for"
             | OldVersion _ -> "The previous version to generates release notes since"
-            | ReleaseLabel _ -> "The version label on the issues / github prs, defaults to v[VERSION]"
-            | ReleaseLabelFormat _ -> "x"
+            | ReleaseLabelFormat _ ->
+                sprintf "The release label format, defaults to vVERSION, VERSION will be replaced by the actual version" 
             | UncategorizedHeader _ -> "The header to use in the markdown for uncategorized issues/prs"
 
 type GitHub(owner, repository) =
@@ -42,7 +42,7 @@ type ReleaseNotesConfig =
         Token: string option
         Version: string
         OldVersion: string option
-        ReleaseLabel: string 
+        ReleaseLabelFormat: string 
         UncategorizedLabel: string 
         UncategorizedHeader: string 
     }
@@ -51,7 +51,7 @@ type ReleaseNotesConfig =
 let issueNumberRegex(url: string) =
     let pattern = sprintf "\s(?:#|%sissues/)(?<num>\d+)" url
     Regex(pattern, RegexOptions.Multiline ||| RegexOptions.IgnoreCase ||| RegexOptions.CultureInvariant ||| RegexOptions.ExplicitCapture ||| RegexOptions.Compiled)
-  
+
 type GitHubItem(issue: Issue, relatedIssues: int list) =  
     member val Issue = issue
     member val RelatedIssues = relatedIssues
@@ -129,10 +129,12 @@ let filterByPullRequests (issueNumberRegex: Regex) (issues:IReadOnlyList<Issue>)
     items.AddRange(collectedIssues)       
     items
     
+let releaseLabel version (format:string) = format.Replace("VERSION", version)
+    
 let getClosedIssues (config:ReleaseNotesConfig) =
     let issueNumberRegex = issueNumberRegex config.GitHub.Url   
     let filter = RepositoryIssueRequest()
-    filter.Labels.Add config.ReleaseLabel
+    filter.Labels.Add <| releaseLabel config.Version config.ReleaseLabelFormat
     filter.State <- ItemStateFilter.Closed
 
     let client = GitHubClient(ProductHeaderValue("ReleaseNotesGenerator"))
@@ -184,8 +186,9 @@ let run (config:ReleaseNotesConfig) =
             for issue in closedIssue.Value do
                 sprintf "- %s" issue.Title |> writer.WriteLine
             writer.WriteLine()
-              
-        sprintf "### [View the full list of issues and PRs](%sissues?utf8=%%E2%%9C%%93&q=label%%3A%s)" config.GitHub.Url config.ReleaseLabel
+        
+        let releasedLabel = releaseLabel config.Version config.ReleaseLabelFormat  
+        sprintf "### [View the full list of issues and PRs](%sissues?utf8=%%E2%%9C%%93&q=label%%3A%s)" config.GitHub.Url releasedLabel
         |> writer.WriteLine   
         0
     with
@@ -225,7 +228,7 @@ let main argv =
                 Token = token
                 Version = version
                 OldVersion = oldVersion
-                ReleaseLabel = p.TryGetResult ReleaseLabel |> Option.defaultValue (sprintf "v%s" version)
+                ReleaseLabelFormat = p.TryGetResult ReleaseLabelFormat |> Option.defaultValue "vVERSION"
                 UncategorizedLabel = uncategorizedLabel
                 UncategorizedHeader = uncategorizedHeader 
             }
