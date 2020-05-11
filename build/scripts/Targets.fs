@@ -76,6 +76,9 @@ let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["create-release"
            "--version"; currentVersion
+           "--label"; "enhancements"; "New Features"
+           "--label"; "bug"; "Bug Fixes"
+           "--label"; "documentation"; "Docs Improvements"
         ] @ tokenArgs
         
     exec "dotnet" (dotnetRun @ ["--"; ] @ releaseArgs) |> ignore
