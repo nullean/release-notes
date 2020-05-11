@@ -38,7 +38,6 @@ let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient
     create <| releaseLabel newMinor config.ReleaseLabelFormat 
     create <| releaseLabel newPatch config.ReleaseLabelFormat 
     
-    
 let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body =
     let existing =
         try
