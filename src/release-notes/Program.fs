@@ -11,19 +11,32 @@ let private releaseLabel version (format:string) = format.Replace("VERSION", ver
 
 let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient) =
     let create label =
-        client.Issue.Labels.Create(
-            config.GitHub.Owner, config.GitHub.Repository,
-            NewLabel(label, config.LabelColor, Description=sprintf "%s" label))
-        |> ignore
+        let existing =
+            try
+                Some <|
+                    (client.Issue.Labels.Get(config.GitHub.Owner, config.GitHub.Repository, config.Version)
+                    |> Async.AwaitTask
+                    |> Async.RunSynchronously)
+            finally ignore()
+            
+        match existing with
+        | Some s -> ignore()
+        | None ->
+            client.Issue.Labels.Create(
+                config.GitHub.Owner, config.GitHub.Repository,
+                NewLabel(label, config.LabelColor, Description=sprintf "%s" label))
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> ignore
     
     let v = SemVer.parse config.Version
     let newMajor = sprintf "%i.0.0" (v.Major+1u)
     let newMinor = sprintf "%i.%i.0" v.Major (v.Minor+1u)
     let newPatch = sprintf "%i.%i.%i" v.Major (v.Minor) (v.Patch+1u)
     
-    create newMajor
-    create newMinor
-    create newPatch
+    create <| releaseLabel newMajor config.ReleaseLabelFormat
+    create <| releaseLabel newMinor config.ReleaseLabelFormat 
+    create <| releaseLabel newPatch config.ReleaseLabelFormat 
     
     
 let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body =
@@ -37,13 +50,18 @@ let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body
             
     match existing with
     | Some s ->
+        printfn "Found release"
         client.Repository.Release.Edit(
-                config.GitHub.Owner, config.GitHub.Repository, s.Id,
-                ReleaseUpdate(Body=body)) |> ignore
+            config.GitHub.Owner, config.GitHub.Repository, s.Id,
+            ReleaseUpdate(Body=body))
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
     | None ->
         client.Repository.Release.Create(
-                config.GitHub.Owner, config.GitHub.Repository,
-                NewRelease(config.Version, Body=body)) |> ignore
+            config.GitHub.Owner, config.GitHub.Repository,
+            NewRelease(config.Version, Body=body)) 
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
     
     
 let private locateOldVersion (config:ReleaseNotesConfig) (client:GitHubClient) =
@@ -103,7 +121,7 @@ let run (config:ReleaseNotesConfig) =
         | _ ->
            let releaseNotes = writeReleaseNotes config client oldVersion
            if (config.GenerateReleaseOnGithub) then
-               createRelease config client releaseNotes 
+               createRelease config client releaseNotes |> ignore
                addNewVersionLabels config client
                ignore()
         0
@@ -156,7 +174,7 @@ let main argv =
                 UncategorizedHeader = uncategorizedHeader
                 Output = p.TryGetResult Output
                 // TODO parameter
-                LabelColor = "#e3e3e3"
+                LabelColor = "e3e3e3"
                 OldVersionOnly = oldVersionOnly
                 GenerateReleaseOnGithub = generateRelease
                 ReleaseBodyPaths = bodyFilePaths

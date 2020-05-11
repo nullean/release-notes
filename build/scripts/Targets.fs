@@ -73,15 +73,13 @@ let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
         match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
         | None -> []
         | Some token -> ["--token"; token;]
-    let validationArgs =
+    let releaseArgs =
         (Paths.Repository.Split("/") |> Seq.toList)
-        @ ["--version"; currentVersion
-           "--create"; "enhancements"; "New Features"
-           "--label"; "bug"; "Bug Fixes"
-           "--label"; "documentation"; "Docs Improvements"
+        @ ["create-release"
+           "--version"; currentVersion
         ] @ tokenArgs
         
-    exec "dotnet" (dotnetRun @ ["--"] @ validationArgs) |> ignore
+    exec "dotnet" (dotnetRun @ ["--"; ] @ releaseArgs) |> ignore
     
 let private release (arguments:ParseResults<Arguments>) = printfn "release"
     

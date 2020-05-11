@@ -3,7 +3,7 @@ module ReleaseNotes.Arguments
 open Argu
 
 type CreateReleaseArguments =
-    | [<CustomCommandLine("body-path")>]BodyFilePath of string  
+    | [<CustomCommandLine("--body-path")>]BodyFilePath of string  
     with
     interface IArgParserTemplate with
         member s.Usage =
