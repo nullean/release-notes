@@ -16,7 +16,7 @@ type Arguments =
     | [<SubCommand; CustomCommandLine("create-release"); CliPrefix(CliPrefix.None)>] CreateRelease of ParseResults<CreateReleaseArguments>
     | [<Inherit;Mandatory>]Version of string
     | [<Inherit>]Token of string
-    | Label of label:string * description:string
+    | [<Inherit>]Label of label:string * description:string
     | OldVersion of string
     | ReleaseLabelFormat of string
     | UncategorizedHeader of string
