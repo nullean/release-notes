@@ -11,7 +11,7 @@ type Arguments =
     | ReleaseLabelFormat of string
     | UncategorizedHeader of string
     | Output of string
-    | NewVersionLabels of enable:bool * color:string option
+    | NewVersionLabels of bool
     with
     interface IArgParserTemplate with
         member s.Usage =

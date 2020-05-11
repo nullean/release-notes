@@ -95,7 +95,7 @@ let main argv =
             let uncategorizedLabel = "Uncategorized" 
             let uncategorizedHeader = p.TryGetResult UncategorizedHeader |> Option.defaultValue uncategorizedLabel
             
-            let (newVersionLabels, labelColor) = p.TryGetResult NewVersionLabels |> Option.defaultValue (false, None)
+            let newVersionLabels = p.TryGetResult NewVersionLabels |> Option.defaultValue false
             
             let labels =
                 p.GetResults Label @ [(uncategorizedLabel, uncategorizedHeader)]
@@ -113,7 +113,8 @@ let main argv =
                 UncategorizedHeader = uncategorizedHeader
                 Output = p.TryGetResult Output
                 NewVersionLabels = newVersionLabels
-                LabelColor = labelColor |> Option.defaultValue "#e3e3e3"
+                // TODO parameter
+                LabelColor = "#e3e3e3"
             }
             run config
         with e ->

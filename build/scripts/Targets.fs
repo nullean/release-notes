@@ -11,7 +11,7 @@ open ProcNet
 
     
 let exec binary args =
-    let r = Proc.Exec (binary, args |> List.toArray)
+    let r = Proc.Exec (binary, args |> List.map (fun a -> sprintf "\"%s\"" a) |> List.toArray)
     match r.HasValue with | true -> r.Value | false -> failwithf "invocation of `%s` timed out" binary
     
 let private restoreTools = lazy(exec "dotnet" ["tool"; "restore"])
@@ -23,60 +23,51 @@ let private currentVersion =
         o.Line
     )
 
-let private bump (arguments:ParseResults<BumpArguments>) =
-    printfn "Not needed only integration branch is master"
-    
-let private build (arguments:ParseResults<Arguments>) =
+let private clean (arguments:ParseResults<Arguments>) =
     if (Paths.Output.Exists) then Paths.Output.Delete (true)
-    let result = exec "dotnet" ["clean"]
-    let result = exec "dotnet" ["build"; "-c"; "Release"] 
+    exec "dotnet" ["clean"] |> ignore
     
-    printfn "build"
-    
+let private build (arguments:ParseResults<Arguments>) = exec "dotnet" ["build"; "-c"; "Release"] |> ignore
+
 let private pristineCheck (arguments:ParseResults<Arguments>) =
     match Information.isCleanWorkingCopy "." with
-    | true  ->
-        printfn "The checkout folder does not have pending changes, proceeding"
-    | _ -> 
-        failwithf "The checkout folder has pending changes, aborting"
-    
+    | true  -> printfn "The checkout folder does not have pending changes, proceeding"
+    | _ -> failwithf "The checkout folder has pending changes, aborting"
+
+let private generatePackages (arguments:ParseResults<Arguments>) =
+    let output = Paths.RootRelative Paths.Output.FullName
+    exec "dotnet" ["pack"; "-c"; "Release"; "-o"; output] |> ignore
     
 let private validatePackages (arguments:ParseResults<Arguments>) =
     let nugetPackage =
         let p = Paths.Output.GetFiles("*.nupkg") |> Seq.sortByDescending(fun f -> f.CreationTimeUtc) |> Seq.head
         Paths.RootRelative p.FullName
-    let project = Paths.RootRelative Paths.ToolProject.FullName
-    let validate = exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersion.Value; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"]
-    
-    printfn "validatePackages"
+    exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersion.Value; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"] |> ignore
     
 let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let project = Paths.RootRelative Paths.ToolProject.FullName
+    let currentVersion = currentVersion.Value
     let output =
-        Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion.Value)
-    let validate =
-        let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
-        let tokenArgs =
-            match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
-            | None -> []
-            | Some token -> ["--token"; token; "--newversionlabels"]
-        let validationArgs =
-            (Paths.ToolName.Split("/") |> Seq.toList)
-            @ ["--version"; currentVersion.Value
-               "--label"; "enhancements"; "New Features"
-               "--label"; "bug"; "Bug Fixes"
-               "--label"; "documentation"; "Docs Improvements"
-            ] @ tokenArgs
-            @ ["--output"; output]
-            
-        exec "dotnet" (dotnetRun @ ["--"] @ validationArgs)
-    printfn "validatePackages"
+        Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion)
+    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
+    let tokenArgs =
+        match (Fake.Core.Environment.environVarOrNone "GITHUB_TOKEN") with
+        | None -> []
+        | Some token -> ["--token"; token; "--newversionlabels true"]
+    let validationArgs =
+        (Paths.Repository.Split("/") |> Seq.toList)
+        @ ["--version"; currentVersion
+           "--label"; "enhancements"; "New Features"
+           "--label"; "bug"; "Bug Fixes"
+           "--label"; "documentation"; "Docs Improvements"
+        ] @ tokenArgs
+        @ ["--output"; output]
+        
+    exec "dotnet" (dotnetRun @ ["--"] @ validationArgs) |> ignore
     
 let private release (arguments:ParseResults<Arguments>) =
     let output = Paths.RootRelative Paths.Output.FullName
-    let publish = exec "dotnet" ["pack"; "-c"; "Release"; "-o"; output]
-    
-    printfn "release"
+    exec "dotnet" ["pack"; "-c"; "Release"; "-o"; output] |> ignore
     
 let private publish (arguments:ParseResults<Arguments>) =
     // TODO
@@ -88,32 +79,33 @@ let private publish (arguments:ParseResults<Arguments>) =
     printfn "publish" 
 
 let Setup (parsed:ParseResults<Arguments>) (subCommand:Arguments) =
-    let step name (action:ParseResults<Arguments> -> unit) =
-        Targets.Target(name, [], Action(fun _ -> action(parsed)))
-        name
-    let cmd (name:string) dependentCommands steps action =
+    let step (name:string) action = Targets.Target(name, new Action(fun _ -> action(parsed)))
+    
+    let cmd (name:string) commandsBefore steps action =
         let singleTarget = (parsed.TryGetResult SingleTarget |> Option.defaultValue false)
         let deps =
-            match (singleTarget, dependentCommands) with
+            match (singleTarget, commandsBefore) with
             | (true, _) -> [] 
             | (_, Some d) -> d
             | _ -> []
         let steps = steps |> Option.defaultValue []
         Targets.Target(name, deps @ steps, Action(action))
         
-    cmd BumpArguments.Name None None <| fun _ ->
-        match subCommand with | Bump b -> bump b | _ -> failwithf "bump needs bump args"
-        
-    cmd Build.Name None None <| fun _ -> build parsed
+    step Clean.Name clean
+    cmd Build.Name None (Some [Clean.Name]) <| fun _ -> build parsed
     
-    cmd PristineCheck.Name None None <| fun _ -> pristineCheck parsed
-    
+    step PristineCheck.Name pristineCheck
+    step GeneratePackages.Name generatePackages 
+    step ValidatePackages.Name validatePackages 
+    step GenerateReleaseNotes.Name generateReleaseNotes
     cmd Release.Name
-        (Some [PristineCheck.Name; Build.Name])
-        (Some [
-            step "validatePackages" validatePackages;
-            step "generateReleaseNotes" generateReleaseNotes;
-        ])
+        (Some [PristineCheck.Name; Build.Name;])
+        (Some [GeneratePackages.Name; ValidatePackages.Name; GenerateReleaseNotes.Name])
         <| fun _ -> release parsed
         
-    cmd Publish.Name (Some [Release.Name]) None <| fun _ -> publish parsed
+    step PublishRelease.Name <| fun _ -> ignore()
+    step PublishNewLabels.Name <| fun _ -> ignore()
+    cmd Publish.Name
+        (Some [Release.Name])
+        None
+        <| fun _ -> publish parsed
