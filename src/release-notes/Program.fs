@@ -24,7 +24,7 @@ let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient
         | None ->
             client.Issue.Labels.Create(
                 config.GitHub.Owner, config.GitHub.Repository,
-                NewLabel(label, config.LabelColor, Description=sprintf "%s" label))
+                NewLabel(label, config.LabelColor))
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> ignore
