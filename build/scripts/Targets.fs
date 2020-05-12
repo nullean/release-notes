@@ -56,7 +56,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let validationArgs =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["--version"; currentVersion
-           "--label"; "enhancements"; "New Features"
+           "--label"; "enhancement"; "New Features"
            "--label"; "bug"; "Bug Fixes"
            "--label"; "documentation"; "Docs Improvements"
         ] @ tokenArgs
@@ -76,7 +76,7 @@ let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["create-release"
            "--version"; currentVersion
-           "--label"; "enhancements"; "New Features"
+           "--label"; "enhancement"; "New Features"
            "--label"; "bug"; "Bug Fixes"
            "--label"; "documentation"; "Docs Improvements"
         ] @ tokenArgs
