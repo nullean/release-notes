@@ -42,6 +42,19 @@ let private validatePackages (arguments:ParseResults<Arguments>) =
         let p = Paths.Output.GetFiles("*.nupkg") |> Seq.sortByDescending(fun f -> f.CreationTimeUtc) |> Seq.head
         Paths.RootRelative p.FullName
     exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersion.Value; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"] |> ignore
+
+let private generateApiChanges (arguments:ParseResults<Arguments>) =
+    let output = Paths.RootRelative <| Paths.Output.FullName
+    let currentVersion = currentVersion.Value
+    let args =
+        [
+            "assembly-differ"
+            (sprintf "previous-nuget|%s|%s|netcoreapp3.1" Paths.ToolName currentVersion);
+            (sprintf "directory|src/%s/bin/Release/netcoreapp3.1" Paths.ToolName);
+            "--target"; "release-notes"; "-f"; "github-comment"; "--output"; output
+        ]
+        
+    exec "dotnet" args |> ignore
     
 let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let project = Paths.RootRelative Paths.ToolProject.FullName
@@ -72,13 +85,14 @@ let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
         match arguments.TryGetResult Token with
         | None -> []
         | Some token -> ["--token"; token;]
+    let releaseNotes = Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion)
+    let breakingChanges = Paths.RootRelative <| Path.Combine(Paths.Output.FullName, "github-breaking-changes-comments.md")
     let releaseArgs =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["create-release"
            "--version"; currentVersion
-           "--label"; "enhancement"; "New Features"
-           "--label"; "bug"; "Bug Fixes"
-           "--label"; "documentation"; "Docs Improvements"
+           "--body"; releaseNotes; 
+           "--body"; breakingChanges; 
         ] @ tokenArgs
         
     exec "dotnet" (dotnetRun @ ["--"; ] @ releaseArgs) |> ignore
@@ -107,9 +121,10 @@ let Setup (parsed:ParseResults<Arguments>) (subCommand:Arguments) =
     step GeneratePackages.Name generatePackages 
     step ValidatePackages.Name validatePackages 
     step GenerateReleaseNotes.Name generateReleaseNotes
+    step GenerateApiChanges.Name generateApiChanges
     cmd Release.Name
         (Some [PristineCheck.Name; Build.Name;])
-        (Some [GeneratePackages.Name; ValidatePackages.Name; GenerateReleaseNotes.Name])
+        (Some [GeneratePackages.Name; ValidatePackages.Name; GenerateReleaseNotes.Name; GenerateApiChanges.Name])
         <| fun _ -> release parsed
         
     step CreateReleaseOnGithub.Name createReleaseOnGithub 

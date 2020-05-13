@@ -1,6 +1,8 @@
 ﻿module ReleaseNotes.Program
 
 open System
+open System.IO
+open System.Text
 open Argu
 open Fake.Core
 open Octokit
@@ -38,7 +40,23 @@ let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient
     create <| releaseLabel newMinor config.ReleaseLabelFormat 
     create <| releaseLabel newPatch config.ReleaseLabelFormat 
     
-let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) body =
+let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) =
+    let files =
+        match config.ReleaseBodyFiles with
+        | None -> []
+        | Some s ->
+            s
+            |> List.map(fun f -> Path.GetFullPath(f))
+            |> List.map(fun f -> (File.Exists(f) , f))
+    
+    let unknownFiles = files |> List.filter(fun (found, f) -> not found) |> List.map(fun (_, f) -> f)
+    if unknownFiles.Length > 0 then
+        failwithf "The following files were not found and can not be read to include in the release body: %A" unknownFiles
+        
+    let body =
+        let body = files |> List.fold (fun (state:StringBuilder) (found, f) -> state.AppendLine(File.ReadAllText(f))) (StringBuilder())
+        body.ToString()
+    
     let existing =
         try
             Some <|
@@ -114,15 +132,14 @@ let run (config:ReleaseNotesConfig) =
     
     try      
         let oldVersion = locateOldVersion config client
-        match (config.OldVersionOnly) with
-        | true -> 
-            printfn "%s" (oldVersion |> Option.defaultValue "")
+        match (config.OldVersionOnly, config.GenerateReleaseOnGithub) with
+        | (true, _) -> printfn "%s" (oldVersion |> Option.defaultValue "")
+        | (_, false) ->
+               let release = createRelease config client 
+               addNewVersionLabels config client
         | _ ->
            let releaseNotes = writeReleaseNotes config client oldVersion
-           if (config.GenerateReleaseOnGithub) then
-               createRelease config client releaseNotes |> ignore
-               addNewVersionLabels config client
-               ignore()
+           ignore()
         0
     with
     | ex ->
@@ -176,7 +193,7 @@ let main argv =
                 LabelColor = "e3e3e3"
                 OldVersionOnly = oldVersionOnly
                 GenerateReleaseOnGithub = generateRelease
-                ReleaseBodyPaths = bodyFilePaths
+                ReleaseBodyFiles = bodyFilePaths
             }
             run config
         with e ->

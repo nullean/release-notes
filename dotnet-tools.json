@@ -13,6 +13,12 @@
       "commands": [
         "nupkg-validator"
       ]
+    },
+    "assembly-differ": {
+      "version": "0.10.0",
+      "commands": [
+        "assembly-differ"
+      ]
     }
   }
 }

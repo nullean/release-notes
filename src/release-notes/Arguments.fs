@@ -3,7 +3,7 @@ module ReleaseNotes.Arguments
 open Argu
 
 type CreateReleaseArguments =
-    | [<CustomCommandLine("--body-path")>]BodyFilePath of string  
+    | [<CustomCommandLine("--body")>]BodyFilePath of string  
     with
     interface IArgParserTemplate with
         member s.Usage =
@@ -60,7 +60,7 @@ type ReleaseNotesConfig =
         OldVersionOnly: bool
         LabelColor: string
         GenerateReleaseOnGithub: bool
-        ReleaseBodyPaths: string list option
+        ReleaseBodyFiles: string list option
     }
 
 
