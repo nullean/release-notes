@@ -134,7 +134,7 @@ let run (config:ReleaseNotesConfig) =
         let oldVersion = locateOldVersion config client
         match (config.OldVersionOnly, config.GenerateReleaseOnGithub) with
         | (true, _) -> printfn "%s" (oldVersion |> Option.defaultValue "")
-        | (_, false) ->
+        | (_, true) ->
                let release = createRelease config client 
                addNewVersionLabels config client
         | _ ->
