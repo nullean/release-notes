@@ -66,7 +66,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
         match arguments.TryGetResult Token with
         | None -> []
         | Some token -> ["--token"; token;]
-    let validationArgs =
+    let releaseNotesArgs =
         (Paths.Repository.Split("/") |> Seq.toList)
         @ ["--version"; currentVersion
            "--label"; "enhancement"; "New Features"
@@ -75,7 +75,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
         ] @ tokenArgs
         @ ["--output"; output]
         
-    exec "dotnet" (dotnetRun @ ["--"] @ validationArgs) |> ignore
+    exec "dotnet" (dotnetRun @ ["--"] @ releaseNotesArgs) |> ignore
     
 let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
     let project = Paths.RootRelative Paths.ToolProject.FullName
