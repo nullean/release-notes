@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp3.0;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.0;netcoreapp3.1;net5.0</TargetFrameworks>
     <AssemblyName>release-notes</AssemblyName>
     <RootNamespace>ReleaseNotes</RootNamespace>
     <PackAsTool>true</PackAsTool>
