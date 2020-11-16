@@ -61,7 +61,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let currentVersion = currentVersion.Value
     let output =
         Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion)
-    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "netcoreapp3.1"; "-p"; project]
+    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "net5.0"; "-p"; project]
     let tokenArgs =
         match arguments.TryGetResult Token with
         | None -> []
