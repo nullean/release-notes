@@ -11,7 +11,7 @@ open ReleaseNotes
 open ReleaseNotes.Arguments
 
 let private releaseExists (config:ReleaseNotesConfig) (client:GitHubClient) version =
-    let releaseTag = Labeler.releaseLabel version config.ReleaseLabelFormat  
+    let releaseTag = Labeler.releaseLabel version config.ReleaseTagFormat  
     let existing =
         try
             Some <|
@@ -363,6 +363,7 @@ let main argv =
                 Token = token
                 Version = version
                 OldVersion = oldVersion
+                ReleaseTagFormat = p.TryGetResult ReleaseTagFormat |> Option.defaultValue "VERSION"
                 ReleaseLabelFormat = p.TryGetResult ReleaseLabelFormat |> Option.defaultValue "vVERSION"
                 BackportLabelFormat = p.TryGetResult BackportLabelFormat
                 UncategorizedLabel = uncategorizedLabel
