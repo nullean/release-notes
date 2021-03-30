@@ -30,9 +30,9 @@ type Arguments =
     | [<Inherit>]Token of string
     | [<Inherit>]Label of label:string * description:string
     | OldVersion of string
-    | ReleaseTagFormat of string
-    | ReleaseLabelFormat of string
-    | BackportLabelFormat of string
+    | [<Inherit>]ReleaseTagFormat of string
+    | [<Inherit>]ReleaseLabelFormat of string
+    | [<Inherit>]BackportLabelFormat of string
     | Format of Format
     | UncategorizedHeader of string
     | Output of string

@@ -96,10 +96,11 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
     
     let re =
         let prefix =
-            match config.ReleaseLabelFormat.Replace("VERSION", "") with
+            match config.ReleaseTagFormat.Replace("VERSION", "") with
             | p when String.IsNullOrWhiteSpace p -> ""
-            | p -> sprintf "(?:%s)?" p
-        Regex <| sprintf @"%s(\d+\.\d+\.\d+(?:-\w+)?)" prefix
+            | p -> sprintf "(?:%s)" p
+        Regex <| sprintf @"^%s(\d+\.\d+\.\d+(?:-\w+)?)$" prefix
+    printfn "%O" re
     let foundOldVersion =
         releases
         |> Seq.choose(fun t ->
@@ -144,7 +145,6 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
     | _ -> failwith "No current version found!"
 
 let private writeMarkDownReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
-    let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
     let gitHub = config.GitHub
     use writer = new OutputWriter(config.Output)
     //oldVersion can be none if the repository has never had a release
@@ -152,6 +152,7 @@ let private writeMarkDownReleaseNotes (config:ReleaseNotesConfig) (client:GitHub
         writer.WriteLine (sprintf "%scompare/%s...%s" gitHub.Url oldVersion config.Version )
         writer.EmptyLine ()
     )
+    let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
     let closedIssues = GithubScanner.getClosedIssues config client releasedLabel
     for closedIssue in closedIssues do
         config.Labels.[closedIssue.Key] |> sprintf "## %s" |> writer.WriteLine    
