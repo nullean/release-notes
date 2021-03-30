@@ -9,11 +9,20 @@ type CreateReleaseArguments =
         member s.Usage =
             match s with
             | BodyFilePath _ -> "Path to file that will be read and used for the body for the release, can be specified multiple times to combine"
+            
+type CurrentVersionArguments =
+    | [<CustomCommandLine("--query")>]Query of string  
+    with
+    interface IArgParserTemplate with
+        member s.Usage =
+            match s with
+            | Query _ -> "An anchor query, M.N, M.x, or master. will find the current and next patch, minor, major respectfully"
 
 type Arguments =
     | [<MainCommand;Mandatory;Inherit; CliPrefix(CliPrefix.None);>] Repository of owner:string * repository_name:string
     | [<SubCommand; CustomCommandLine("apply-labels"); CliPrefix(CliPrefix.None)>] ApplyLabels 
     | [<SubCommand; CustomCommandLine("find-previous"); CliPrefix(CliPrefix.None);>] FindPreviousVersion 
+    | [<SubCommand; CustomCommandLine("current-version"); CliPrefix(CliPrefix.None);>] CurrentVersion of ParseResults<CurrentVersionArguments>
     | [<SubCommand; CustomCommandLine("create-release"); CliPrefix(CliPrefix.None)>] CreateRelease of ParseResults<CreateReleaseArguments>
     | [<Inherit;Mandatory>]Version of string
     | [<Inherit>]Token of string
@@ -33,6 +42,7 @@ type Arguments =
             
             | ApplyLabels _ -> "Creates version and backport labels"
             | FindPreviousVersion _ -> "Find the previous release for the passed version"
+            | CurrentVersion _ -> "Given search syntax finds the current and the next versions on separate lines"
             | CreateRelease _ -> "Makes sure the tag exists as release on github and introduces new version labels for the next major/minor/patch"
             
             | Repository _ -> "Repository to use in <owner> <repos_name> format"
@@ -68,6 +78,7 @@ type ReleaseNotesConfig =
         LabelColor: string
         GenerateReleaseOnGithub: bool
         ReleaseBodyFiles: string list option
+        VersionQuery: string option
     }
 
 
