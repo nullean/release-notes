@@ -159,9 +159,107 @@ let private writeMarkDownReleaseNotes (config:ReleaseNotesConfig) (client:GitHub
     sprintf "### [View the full list of issues and PRs](%sissues?utf8=%%E2%%9C%%93&q=label%%3A%s)" config.GitHub.Url releasedLabel
     |> writer.WriteLine
     writer.ToString()
+    
+let private writeAsciiDocReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
+    
+    
+    config.Output |> Option.iter (fun output ->
+        let d = Directory.CreateDirectory(output)
+        let path f = FileInfo <| Path.Combine(d.FullName, f)
+        let cv = SemVer.parse config.Version
+        
+        let releaseNotes = path "release-notes.asciidoc"
+        
+        let generatedNotes = path <| sprintf "release-notes-%O-generated.asciidoc" cv
+        let humanNotes = path <| sprintf "release-notes-%O-human.asciidoc" cv
+        
+        let writeHuman () =
+            use writer = new OutputWriter(Some humanNotes.FullName)
+            writer.WriteLine <| sprintf ""
+        let writeGenerated () =
+            use writer = new OutputWriter(Some generatedNotes.FullName)
+            writer.WriteLine <| sprintf ""
+            let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
+            let groupedClosedIssues = GithubScanner.getClosedIssues config client releasedLabel
+            for kv in groupedClosedIssues do
+                let header = kv.Key.ToLowerInvariant().Replace(" ", "-")
+                let value = config.Labels.[kv.Key] 
+                
+                sprintf @"[float]
+[[%s]]
+=== %s"             header value |> writer.WriteLine
+                writer.EmptyLine ()
+                for issue in kv.Value do
+                    sprintf "- %s" (issue.TitleAsciiDoc config.GitHub.Url) |> writer.WriteLine
+                writer.EmptyLine ()
+            writer.WriteLine ""
+        
+        if not humanNotes.Exists then writeHuman()
+        writeGenerated()
+            
+        let versionNotes = path <| sprintf "release-notes-%O.asciidoc" cv
+        let writeVersioned () =
+            use writer = new OutputWriter(Some versionNotes.FullName)
+            writer.WriteLine <| sprintf """[float]
+[[release-notes-%O]]
+=== Release-Notes %O
+
+include::%s[]
+include::%s[]
+
+"""                 cv cv humanNotes.Name generatedNotes.Name
+
+        writeVersioned()
+        
+        //write release notes landing page
+        
+        let currentPatchReleases =
+            seq { 0 .. Convert.ToInt32(cv.Patch) } |> Seq.rev
+            |> Seq.map(fun patch -> SemVer.parse <| sprintf "%i.%i.%i" cv.Major cv.Minor patch)
+            |> Seq.toList
+        
+        use writer = new OutputWriter(Some releaseNotes.FullName)
+        writer.WriteLine <| sprintf @"[[release-notes]]
+= Release notes
+
+[partintro]
+--
+Review important information about %i.%i.x releases.
+
+* <<release-notes-7.12.0>>
+--
+"           cv.Major cv.Minor
+        
+        currentPatchReleases |> List.iter(fun (v:SemVerInfo) ->
+            let fileName = sprintf "release-notes-%O.asciidoc" v
+            let versionReleaseNotes = path fileName
+            if versionReleaseNotes.Exists then
+                writer.WriteLine <| sprintf "\n\ninclude::%s[]\n\n" fileName
+            else
+                let ghRelease =
+                    sprintf "%s/releases/tag/%s"
+                        config.GitHub.Repository
+                        (Labeler.releaseLabel (v.ToString()) config.ReleaseLabelFormat)
+                    
+                writer.WriteLine <| sprintf """[float]
+[[release-notes-%O]]
+=== Release-Notes %O
+%s[Available on github]
+
+"""                 v v ghRelease
+            
+               
+        )
+    )
+    ignore()
+
 
 let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
-    writeMarkDownReleaseNotes config client oldVersion
+    match config.Format with
+    | Markdown ->
+        writeMarkDownReleaseNotes config client oldVersion |> ignore
+    | AsciiDoc ->
+        writeAsciiDocReleaseNotes config client oldVersion
 
 let run (config:ReleaseNotesConfig) =
     let client = GitHubClient(ProductHeaderValue("ReleaseNotesGenerator"))
@@ -217,6 +315,13 @@ let main argv =
             let version = p.GetResult Version
             let oldVersion = p.TryGetResult OldVersion
             
+            let format = p.TryGetResult Format |> Option.defaultValue Markdown
+//                match p.TryGetResult Format with
+//                | Some "asciidoc" | Some "adoc" -> AsciiDoc
+//                | Some "md" | Some "markdown"
+//                | None -> Markdown
+//                | Some v -> failwithf "'%s' is not a supported format" v
+            
             let uncategorizedLabel = "Uncategorized" 
             let uncategorizedHeader = p.TryGetResult UncategorizedHeader |> Option.defaultValue uncategorizedLabel
             
@@ -255,6 +360,7 @@ let main argv =
                 GenerateReleaseOnGithub = generateRelease
                 ReleaseBodyFiles = bodyFilePaths
                 VersionQuery = versionQuery
+                Format = format
             }
             run config
         with e ->

@@ -7,6 +7,13 @@ open System.Text
 type OutputWriter(output: string option) =
     let stdout = Console.Out
     let sb = new StringBuilder()
+    do
+        output |> Option.iter (fun o ->
+            printfn ""
+            printfn "Building %s" o
+            printfn "-------------------"   
+        )
+    
     member this.EmptyLine () =
         stdout.WriteLine()
         sb.AppendLine() |> ignore
