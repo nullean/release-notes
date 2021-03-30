@@ -18,6 +18,8 @@ type CurrentVersionArguments =
             match s with
             | Query _ -> "An anchor query, M.N, M.x, or master. will find the current and next patch, minor, major respectfully"
 
+type Format = Markdown | AsciiDoc
+
 type Arguments =
     | [<MainCommand;Mandatory;Inherit; CliPrefix(CliPrefix.None);>] Repository of owner:string * repository_name:string
     | [<SubCommand; CustomCommandLine("apply-labels"); CliPrefix(CliPrefix.None)>] ApplyLabels 
@@ -30,6 +32,7 @@ type Arguments =
     | OldVersion of string
     | ReleaseLabelFormat of string
     | BackportLabelFormat of string
+    | Format of Format
     | UncategorizedHeader of string
     | Output of string
     
@@ -54,6 +57,7 @@ type Arguments =
                 sprintf "The backport label format, defaults to 'Backport BRANCH`, BRANCH will be calculated from the version" 
             | UncategorizedHeader _ -> "The header to use in the markdown for uncategorized issues/prs"
             | Output _ -> "write the release notes to a file as well as standard out, VERSION will be replaced by the actual version"
+            | Format _ -> "The format in which to print the results, can be markdown and asciidoc"
 
 type GitHubRepository(owner, repository) =
     member this.Owner = owner
@@ -79,6 +83,7 @@ type ReleaseNotesConfig =
         GenerateReleaseOnGithub: bool
         ReleaseBodyFiles: string list option
         VersionQuery: string option
+        Format: Format
     }
 
 

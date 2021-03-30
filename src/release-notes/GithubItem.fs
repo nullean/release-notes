@@ -24,6 +24,19 @@ type GitHubItem(issue: Issue, relatedIssues: int list) =
         |> ignore                  
         builder.ToString()
         
+    member this.TitleAsciiDoc githubUrl =
+        if issue.PullRequest = null then
+            sprintf "* %s %sissues/%i[#%i]" issue.Title githubUrl issue.Number issue.Number
+        else
+            let related =
+                if relatedIssues.Length > 0 then
+                    relatedIssues
+                    |> List.map(fun i -> sprintf "%sissues/%i[#%i]" githubUrl i i)
+                    |> String.concat ", "
+                    |> sprintf " (%s: %s)" (if relatedIssues.Length = 1 then "issue" else "issues")
+                else ""
+            sprintf "* %s %spull/%i[#%i] %s" issue.Title githubUrl issue.Number issue.Number related
+        
     member this.Labels = issue.Labels   
     member this.Number = issue.Number
 
