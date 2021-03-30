@@ -10,6 +10,18 @@ open Octokit
 open ReleaseNotes
 open ReleaseNotes.Arguments
 
+let private releaseExists (config:ReleaseNotesConfig) (client:GitHubClient) version =
+    let releaseTag = Labeler.releaseLabel version config.ReleaseLabelFormat  
+    let existing =
+        try
+            Some <|
+                (client.Repository.Release.Get(config.GitHub.Owner, config.GitHub.Repository, releaseTag)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously)
+        with _ -> None
+    existing
+            
+
 let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) =
     let files =
         match config.ReleaseBodyFiles with
@@ -27,15 +39,7 @@ let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) =
         let body = files |> List.fold (fun (state:StringBuilder) (found, f) -> state.AppendLine(File.ReadAllText(f))) (StringBuilder())
         body.ToString()
     
-    let existing =
-        try
-            Some <|
-                (client.Repository.Release.Get(config.GitHub.Owner, config.GitHub.Repository, config.Version)
-                |> Async.AwaitTask
-                |> Async.RunSynchronously)
-        with _ -> None
-            
-    match existing with
+    match releaseExists config client config.Version with
     | Some s ->
         printfn "Found release"
         client.Repository.Release.Edit(
@@ -236,17 +240,21 @@ Review important information about %i.%i.x releases.
             if versionReleaseNotes.Exists then
                 writer.WriteLine <| sprintf "\n\ninclude::%s[]\n\n" fileName
             else
-                let ghRelease =
-                    sprintf "%s/releases/tag/%s"
-                        config.GitHub.Repository
-                        (Labeler.releaseLabel (v.ToString()) config.ReleaseLabelFormat)
-                    
-                writer.WriteLine <| sprintf """[float]
+                match releaseExists config client (v.ToString()) with
+                | Some r -> 
+                    writer.WriteLine <| sprintf """[float]
 [[release-notes-%O]]
 === Release-Notes %O
 %s[Available on github]
 
-"""                 v v ghRelease
+"""                     v v r.Url
+                | None ->
+                    writer.WriteLine <| sprintf """[float]
+[[release-notes-%O]]
+=== Release-Notes %O
+No release notes available
+
+"""                     v v 
             
                
         )
