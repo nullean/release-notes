@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Text
+open System.Text.RegularExpressions
 open Argu
 open Fake.Core
 open Octokit
@@ -70,8 +71,75 @@ let private locateOldVersion (config:ReleaseNotesConfig) (client:GitHubClient) =
         | 0, _ -> None
         | _, Some v -> Some (v.ToString())
         | _ -> failwith "No previous version found!"
-                
-let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
+        
+let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHubClient) versionQuery =
+    let releases =
+        client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository)
+        |> Async.AwaitTask
+        |> Async.RunSynchronously
+    
+    let minVersion = 
+            match versionQuery with
+            | "master" | "main" -> SemVer.parse "999.999.999"
+            | query when Regex.IsMatch(query, "\d+\.x") ->
+                SemVer.parse <| query.Replace(".x", ".0") + ".0"
+            | query when Regex.IsMatch(query, "\d+\.\d+") ->
+                SemVer.parse <| query + ".0"
+            | query when Regex.IsMatch(query, "\d+\.\d+.0") ->
+                SemVer.parse <| query
+            | _ ->
+                failwithf "%s is not a valid version query" versionQuery
+    
+    let re =
+        let prefix =
+            match config.ReleaseLabelFormat.Replace("VERSION", "") with
+            | p when String.IsNullOrWhiteSpace p -> ""
+            | p -> sprintf "(?:%s)?" p
+        Regex <| sprintf @"%s(\d+\.\d+\.\d+(?:-\w+)?)" prefix
+    let foundOldVersion =
+        releases
+        |> Seq.choose(fun t ->
+            match re.Match(t.TagName).Groups |> Seq.toList with
+            | [_; capture] -> Some capture.Value
+            | _ -> None
+        )
+        |> Seq.filter(SemVer.isValid)
+        |> Seq.map(SemVer.parse)
+        |> Seq.filter(fun v ->
+            match versionQuery with
+            | "master" | "main" -> true
+            | query when Regex.IsMatch(query, "\d+\.x") ->
+                v.Major = minVersion.Major
+            | query when Regex.IsMatch(query, "\d+\.\d+") ->
+                v.Major = minVersion.Major && v.Minor = minVersion.Minor
+            | query when Regex.IsMatch(query, "\d+\.\d+.0") ->
+                v.Major = minVersion.Major && v.Minor = minVersion.Minor
+            | _ ->
+                false
+        )
+        |> Seq.sortByDescending(fun v -> v)
+        |> Seq.tryHead
+    match releases.Count, foundOldVersion with
+    | 0, _ -> None
+    | _, Some v ->
+        match versionQuery with
+        | "master" | "main" ->
+            let nextVersion = SemVer.parse <| sprintf "%i.0.0" (v.Major + 1u)
+            Some <| (v, nextVersion)
+        | query when Regex.IsMatch(query, "\d+\.x") ->
+            let nextVersion = SemVer.parse <| sprintf "%i.%i.0" v.Major (v.Minor + 1u)
+            Some <| (v, nextVersion)
+        | query when Regex.IsMatch(query, "\d+\.\d+") ->
+            let nextVersion = SemVer.parse <| sprintf "%i.%i.%i" v.Major v.Minor (v.Patch + 1u)
+            Some <| (v, nextVersion)
+        | query when Regex.IsMatch(query, "\d+\.\d+.0") ->
+            let nextVersion = SemVer.parse <| sprintf "%i.%i.%i" v.Major v.Minor (v.Patch + 1u)
+            Some <| (v, nextVersion)
+        | _ ->
+            failwithf "%s is not a valid version query" versionQuery
+    | _ -> failwith "No current version found!"
+
+let private writeMarkDownReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
     let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
     let gitHub = config.GitHub
     use writer = new OutputWriter(config.Output)
@@ -92,6 +160,9 @@ let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) 
     |> writer.WriteLine
     writer.ToString()
 
+let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
+    writeMarkDownReleaseNotes config client oldVersion
+
 let run (config:ReleaseNotesConfig) =
     let client = GitHubClient(ProductHeaderValue("ReleaseNotesGenerator"))
     client.Credentials <- 
@@ -100,17 +171,27 @@ let run (config:ReleaseNotesConfig) =
         | None -> Credentials.Anonymous
     
     try      
-        let oldVersion = locateOldVersion config client
-        match (config.OldVersionOnly, config.GenerateReleaseOnGithub, config.ApplyLabels) with
-        | (true, _, _) -> printfn "%s" (oldVersion |> Option.defaultValue "")
-        | (_, true, _) ->
+        match (config.OldVersionOnly, config.GenerateReleaseOnGithub, config.ApplyLabels, config.VersionQuery) with
+        | (true, _, _, _) ->
+            let oldVersion = locateOldVersion config client
+            printfn "%s" (oldVersion |> Option.defaultValue "")
+        | (_, true, _, _) ->
+               let oldVersion = locateOldVersion config client
                let release = createRelease config client 
                Labeler.addNewVersionLabels config client
                writeReleaseNotes config client oldVersion |> ignore
-        | (_, _, true) ->
+        | (_, _, true, _) ->
             Labeler.addNewVersionLabels config client 
             Labeler.addBackportLabels config client 
-        | (false, false, false) ->
+        | (false, false, false, Some versionQuery) ->
+               match findCurrentAndNextVersion config client versionQuery with
+               | Some (current, next) ->
+                   printfn "%O" current
+                   printfn "%O" next
+               | _ ->
+                   printfn "%O" config.Version
+        | (false, false, false, None) ->
+               let oldVersion = locateOldVersion config client
                writeReleaseNotes config client oldVersion |> ignore
         0
     with
@@ -141,7 +222,11 @@ let main argv =
             
             let oldVersionOnly = match p.TryGetSubCommand() with | Some FindPreviousVersion -> true | _ -> false 
             let generateRelease = match p.TryGetSubCommand() with | Some (CreateRelease _) -> true | _ -> false 
-            let applyLabels = match p.TryGetSubCommand() with | Some (ApplyLabels _) -> true | _ -> false 
+            let applyLabels = match p.TryGetSubCommand() with | Some ApplyLabels -> true | _ -> false 
+            let versionQuery =
+                match p.TryGetSubCommand() with
+                | Some (CurrentVersion v) -> Some <| v.GetResult Query
+                | _ -> None 
             
             let labels =
                 p.GetResults Label @ [(uncategorizedLabel, uncategorizedHeader)]
@@ -169,6 +254,7 @@ let main argv =
                 OldVersionOnly = oldVersionOnly
                 GenerateReleaseOnGithub = generateRelease
                 ReleaseBodyFiles = bodyFilePaths
+                VersionQuery = versionQuery
             }
             run config
         with e ->
