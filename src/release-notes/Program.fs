@@ -107,11 +107,11 @@ let run (config:ReleaseNotesConfig) =
                let release = createRelease config client 
                Labeler.addNewVersionLabels config client
                writeReleaseNotes config client oldVersion |> ignore
-        | (_, false, true) ->
+        | (_, _, true) ->
             Labeler.addNewVersionLabels config client 
             Labeler.addBackportLabels config client 
-        | _ ->
-           ignore()
+        | (false, false, false) ->
+               writeReleaseNotes config client oldVersion |> ignore
         0
     with
     | ex ->
