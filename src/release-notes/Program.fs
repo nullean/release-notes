@@ -9,37 +9,6 @@ open Octokit
 open ReleaseNotes
 open ReleaseNotes.Arguments
 
-let private releaseLabel version (format:string) = format.Replace("VERSION", version)
-
-let private addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient) =
-    let create label =
-        let existing =
-            try
-                Some <|
-                    (client.Issue.Labels.Get(config.GitHub.Owner, config.GitHub.Repository, label)
-                    |> Async.AwaitTask
-                    |> Async.RunSynchronously)
-            with _ -> None
-            
-        match existing with
-        | Some s -> ignore()
-        | None ->
-            client.Issue.Labels.Create(
-                config.GitHub.Owner, config.GitHub.Repository,
-                NewLabel(label, config.LabelColor))
-                |> Async.AwaitTask
-                |> Async.RunSynchronously
-                |> ignore
-    
-    let v = SemVer.parse config.Version
-    let newMajor = sprintf "%i.0.0" (v.Major+1u)
-    let newMinor = sprintf "%i.%i.0" v.Major (v.Minor+1u)
-    let newPatch = sprintf "%i.%i.%i" v.Major (v.Minor) (v.Patch+1u)
-    
-    create <| releaseLabel newMajor config.ReleaseLabelFormat
-    create <| releaseLabel newMinor config.ReleaseLabelFormat 
-    create <| releaseLabel newPatch config.ReleaseLabelFormat 
-    
 let private createRelease (config:ReleaseNotesConfig) (client:GitHubClient) =
     let files =
         match config.ReleaseBodyFiles with
@@ -103,7 +72,7 @@ let private locateOldVersion (config:ReleaseNotesConfig) (client:GitHubClient) =
         | _ -> failwith "No previous version found!"
                 
 let private writeReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
-    let releasedLabel = releaseLabel config.Version config.ReleaseLabelFormat  
+    let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
     let gitHub = config.GitHub
     use writer = new OutputWriter(config.Output)
     //oldVersion can be none if the repository has never had a release
@@ -132,13 +101,16 @@ let run (config:ReleaseNotesConfig) =
     
     try      
         let oldVersion = locateOldVersion config client
-        match (config.OldVersionOnly, config.GenerateReleaseOnGithub) with
-        | (true, _) -> printfn "%s" (oldVersion |> Option.defaultValue "")
-        | (_, true) ->
+        match (config.OldVersionOnly, config.GenerateReleaseOnGithub, config.ApplyLabels) with
+        | (true, _, _) -> printfn "%s" (oldVersion |> Option.defaultValue "")
+        | (_, true, _) ->
                let release = createRelease config client 
-               addNewVersionLabels config client
+               Labeler.addNewVersionLabels config client
+               writeReleaseNotes config client oldVersion |> ignore
+        | (_, false, true) ->
+            Labeler.addNewVersionLabels config client 
+            Labeler.addBackportLabels config client 
         | _ ->
-           let releaseNotes = writeReleaseNotes config client oldVersion
            ignore()
         0
     with
@@ -169,6 +141,7 @@ let main argv =
             
             let oldVersionOnly = match p.TryGetSubCommand() with | Some FindPreviousVersion -> true | _ -> false 
             let generateRelease = match p.TryGetSubCommand() with | Some (CreateRelease _) -> true | _ -> false 
+            let applyLabels = match p.TryGetSubCommand() with | Some (ApplyLabels _) -> true | _ -> false 
             
             let labels =
                 p.GetResults Label @ [(uncategorizedLabel, uncategorizedHeader)]
@@ -182,10 +155,12 @@ let main argv =
             let config = {
                 GitHub = GitHubRepository(owner, repos)
                 Labels = labels 
+                ApplyLabels = applyLabels
                 Token = token
                 Version = version
                 OldVersion = oldVersion
                 ReleaseLabelFormat = p.TryGetResult ReleaseLabelFormat |> Option.defaultValue "vVERSION"
+                BackportLabelFormat = p.TryGetResult BackportLabelFormat
                 UncategorizedLabel = uncategorizedLabel
                 UncategorizedHeader = uncategorizedHeader
                 Output = p.TryGetResult Output

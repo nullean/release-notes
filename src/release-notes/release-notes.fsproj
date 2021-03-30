@@ -35,6 +35,7 @@
     <Compile Include="OutputWriter.fs" />
     <Compile Include="GithubItem.fs" />
     <Compile Include="GithubScanner.fs" />
+    <Compile Include="Labeler.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
