@@ -45,27 +45,31 @@ let addNewVersionLabels (config:ReleaseNotesConfig) (client:GitHubClient) =
     create config client <| releaseLabel newPatch config.ReleaseLabelFormat
     
 let addBackportLabels (config:ReleaseNotesConfig) (client:GitHubClient) =
-    let mainExists = existsBranch config client "main"
-    let masterExists = existsBranch config client "master"
-    match (mainExists, masterExists) with 
-    | (Some _, Some _)  ->
-        create config client <| backportLabel "main" config.BackportLabelFormat
-        create config client <| backportLabel "master" config.BackportLabelFormat
-    | (Some _, _)  -> create config client <| backportLabel "main" config.BackportLabelFormat
-    | (None, Some _)  -> create config client <| backportLabel "master" config.BackportLabelFormat
-    | _ -> printfn "Repository does not have either main or master branch"
-    
-    let v = SemVer.parse config.Version
-    let backportBranches = [
-        sprintf "%i.x" (v.Major);
-        sprintf "%i.%i" v.Major v.Minor;
-        sprintf "%i.x" (v.Major+1u);
-        sprintf "%i.%i" v.Major (v.Minor+1u);
-    ] 
-    for branch in backportBranches do
-        match existsBranch config client branch with
-        | Some _ -> create config client <| backportLabel branch config.BackportLabelFormat
-        | None -> printfn "branch %s does not exist yet so skipping creating a backport label" branch
+    match config.BackportLabelFormat with
+    | None ->
+        printfn "No backport label format given, skipping creation of backport labels"
+    | Some backportLabelFormat ->
+        let mainExists = existsBranch config client "main"
+        let masterExists = existsBranch config client "master"
+        match (mainExists, masterExists) with 
+        | (Some _, Some _)  ->
+            create config client <| backportLabel "main" backportLabelFormat
+            create config client <| backportLabel "master" backportLabelFormat
+        | (Some _, _)  -> create config client <| backportLabel "main" backportLabelFormat
+        | (None, Some _)  -> create config client <| backportLabel "master" backportLabelFormat
+        | _ -> printfn "Repository does not have either main or master branch"
+        
+        let v = SemVer.parse config.Version
+        let backportBranches = [
+            sprintf "%i.x" (v.Major);
+            sprintf "%i.%i" v.Major v.Minor;
+            sprintf "%i.x" (v.Major+1u);
+            sprintf "%i.%i" v.Major (v.Minor+1u);
+        ] 
+        for branch in backportBranches do
+            match existsBranch config client branch with
+            | Some _ -> create config client <| backportLabel branch backportLabelFormat
+            | None -> printfn "branch %s does not exist yet so skipping creating a backport label" branch
     
     
 

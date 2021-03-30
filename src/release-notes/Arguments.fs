@@ -60,7 +60,7 @@ type ReleaseNotesConfig =
         Version: string
         OldVersion: string option
         ReleaseLabelFormat: string 
-        BackportLabelFormat: string 
+        BackportLabelFormat: string option 
         UncategorizedLabel: string 
         UncategorizedHeader: string 
         Output: string option
