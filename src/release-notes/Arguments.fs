@@ -30,6 +30,7 @@ type Arguments =
     | [<Inherit>]Token of string
     | [<Inherit>]Label of label:string * description:string
     | OldVersion of string
+    | ReleaseTagFormat of string
     | ReleaseLabelFormat of string
     | BackportLabelFormat of string
     | Format of Format
@@ -51,6 +52,8 @@ type Arguments =
             | Repository _ -> "Repository to use in <owner> <repos_name> format"
             | Label _ -> "Map Github labels to categorizations, format <label> <description>, can be specified multiple times"
             | OldVersion _ -> "The previous version to generate release notes since, optional the tool will find the previous release"
+            | ReleaseTagFormat _ ->
+                sprintf "The release tag format, defaults to VERSION, VERSION will be replaced by the actual version" 
             | ReleaseLabelFormat _ ->
                 sprintf "The release label format, defaults to vVERSION, VERSION will be replaced by the actual version" 
             | BackportLabelFormat _ ->
@@ -73,6 +76,7 @@ type ReleaseNotesConfig =
         Token: string option
         Version: string
         OldVersion: string option
+        ReleaseTagFormat: string 
         ReleaseLabelFormat: string 
         BackportLabelFormat: string option 
         UncategorizedLabel: string 
