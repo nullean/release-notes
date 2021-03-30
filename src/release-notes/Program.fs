@@ -184,7 +184,10 @@ let private writeAsciiDocReleaseNotes (config:ReleaseNotesConfig) (client:GitHub
             use writer = new OutputWriter(Some generatedNotes.FullName)
             writer.WriteLine <| sprintf ""
             let releasedLabel = Labeler.releaseLabel config.Version config.ReleaseLabelFormat  
-            let groupedClosedIssues = GithubScanner.getClosedIssues config client releasedLabel
+            let groupedClosedIssues =
+                GithubScanner.getClosedIssues config client releasedLabel
+                |> Seq.sortBy (fun kv -> if kv.Key = config.UncategorizedLabel then -1 else kv.Key.Length)
+            
             for kv in groupedClosedIssues do
                 let header = kv.Key.ToLowerInvariant().Replace(" ", "-")
                 let value = config.Labels.[kv.Key] 
@@ -324,11 +327,6 @@ let main argv =
             let oldVersion = p.TryGetResult OldVersion
             
             let format = p.TryGetResult Format |> Option.defaultValue Markdown
-//                match p.TryGetResult Format with
-//                | Some "asciidoc" | Some "adoc" -> AsciiDoc
-//                | Some "md" | Some "markdown"
-//                | None -> Markdown
-//                | Some v -> failwithf "'%s' is not a supported format" v
             
             let uncategorizedLabel = "Uncategorized" 
             let uncategorizedHeader = p.TryGetResult UncategorizedHeader |> Option.defaultValue uncategorizedLabel
@@ -342,7 +340,15 @@ let main argv =
                 | _ -> None 
             
             let labels =
-                p.GetResults Label @ [(uncategorizedLabel, uncategorizedHeader)]
+                 let labels = 
+                     match p.GetResults Label with
+                     | [] -> [
+                            ("bug", "Bug Fixes");
+                            ("enhancement", "New Features");
+                            ("documentation", "Documentation Improvements")
+                        ]
+                     | filled -> filled
+                 [(uncategorizedLabel, uncategorizedHeader)] @ labels
                 |> Map.ofList
                 
             let bodyFilePaths =
