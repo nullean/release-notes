@@ -233,9 +233,9 @@ include::%s[]
 --
 Review important information about %i.%i.x releases.
 
-* <<release-notes-7.12.0>>
+* <<release-notes-%O>>
 --
-"           cv.Major cv.Minor
+"           cv.Major cv.Minor cv
         
         currentPatchReleases |> List.iter(fun (v:SemVerInfo) ->
             let fileName = sprintf "release-notes-%O.asciidoc" v
