@@ -212,7 +212,7 @@ let private writeAsciiDocReleaseNotes (config:ReleaseNotesConfig) (client:GitHub
             use writer = new OutputWriter(Some versionNotes.FullName)
             writer.WriteLine <| sprintf """[float]
 [[release-notes-%O]]
-=== Release-Notes %O
+== Release-Notes %O
 
 include::%s[]
 include::%s[]
@@ -250,14 +250,14 @@ Review important information about %i.%i.x releases.
                 | Some r -> 
                     writer.WriteLine <| sprintf """[float]
 [[release-notes-%O]]
-=== Release-Notes %O
+== Release-Notes %O
 %s[Available on github]
 
 """                     v v r.Url
                 | None ->
                     writer.WriteLine <| sprintf """[float]
 [[release-notes-%O]]
-=== Release-Notes %O
+== Release-Notes %O
 No release notes available
 
 """                     v v 
