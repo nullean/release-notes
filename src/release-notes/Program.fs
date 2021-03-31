@@ -100,7 +100,6 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
             | p when String.IsNullOrWhiteSpace p -> ""
             | p -> sprintf "(?:%s)" p
         Regex <| sprintf @"^%s(\d+\.\d+\.\d+(?:-\w+)?)$" prefix
-    printfn "%O" re
     let foundOldVersion =
         releases
         |> Seq.choose(fun t ->
