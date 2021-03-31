@@ -253,7 +253,7 @@ Review important information about %i.%i.x releases.
 == Release-Notes %O
 %s[Available on github]
 
-"""                     v v r.Url
+"""                     v v r.HtmlUrl
                 | None ->
                     writer.WriteLine <| sprintf """[float]
 [[release-notes-%O]]
