@@ -84,7 +84,7 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
     
     let minVersion = 
             match versionQuery with
-            | "master" | "main" -> SemVer.parse "999.999.999"
+            | "master" | "main" -> SemVer.parse "0.0.1"
             | query when Regex.IsMatch(query, "\d+\.x") ->
                 SemVer.parse <| query.Replace(".x", ".0") + ".0"
             | query when Regex.IsMatch(query, "\d+\.\d+") ->
@@ -100,6 +100,7 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
             | p when String.IsNullOrWhiteSpace p -> ""
             | p -> sprintf "(?:%s)" p
         Regex <| sprintf @"^%s(\d+\.\d+\.\d+(?:-\w+)?)$" prefix
+        
     let foundOldVersion =
         releases
         |> Seq.choose(fun t ->
@@ -123,25 +124,27 @@ let private findCurrentAndNextVersion (config:ReleaseNotesConfig) (client:GitHub
         )
         |> Seq.sortByDescending(fun v -> v)
         |> Seq.tryHead
-    match releases.Count, foundOldVersion with
-    | 0, _ -> None
-    | _, Some v ->
-        match versionQuery with
-        | "master" | "main" ->
-            let nextVersion = SemVer.parse <| sprintf "%i.0.0" (v.Major + 1u)
-            Some <| (v, nextVersion)
-        | query when Regex.IsMatch(query, "\d+\.x") ->
-            let nextVersion = SemVer.parse <| sprintf "%i.%i.0" v.Major (v.Minor + 1u)
-            Some <| (v, nextVersion)
-        | query when Regex.IsMatch(query, "\d+\.\d+") ->
-            let nextVersion = SemVer.parse <| sprintf "%i.%i.%i" v.Major v.Minor (v.Patch + 1u)
-            Some <| (v, nextVersion)
-        | query when Regex.IsMatch(query, "\d+\.\d+.0") ->
-            let nextVersion = SemVer.parse <| sprintf "%i.%i.%i" v.Major v.Minor (v.Patch + 1u)
-            Some <| (v, nextVersion)
-        | _ ->
-            failwithf "%s is not a valid version query" versionQuery
-    | _ -> failwith "No current version found!"
+    
+    let v = foundOldVersion |> Option.defaultValue minVersion
+   
+    match versionQuery with
+    | "master" | "main" ->
+        let nextVersion = SemVer.parse <| sprintf "%i.0.0" (v.Major + 1u)
+        Some <| (v, nextVersion)
+    | query when Regex.IsMatch(query, "\d+\.x") ->
+        let nextVersion = SemVer.parse <| sprintf "%i.%i.0" v.Major (v.Minor + 1u)
+        Some <| (v, nextVersion)
+        
+    | query when Regex.IsMatch(query, "^\d+\.\d+.0$")
+            || Regex.IsMatch(query, "^\d+\.\d+$") ->
+        let nextVersion =
+            let bumped = SemVer.parse <| sprintf "%i.%i.%i" v.Major v.Minor (v.Patch + 1u)
+            match releaseExists config client (v.ToString()) with
+            | Some _ -> bumped
+            | None -> v
+        Some <| (v, nextVersion)
+    | _ ->
+        failwithf "%s is not a valid version query" versionQuery
 
 let private writeMarkDownReleaseNotes (config:ReleaseNotesConfig) (client:GitHubClient) oldVersion =
     let gitHub = config.GitHub
