@@ -1,10 +1,7 @@
 {
   "sdk": {
-    "version": "5.0.100",
+    "version": "6.0.302",
     "rollForward": "latestFeature",
     "allowPrerelease": false
-  },
-  "version": "8.0.0-alpha1",
-  "doc_current": "master",
-  "doc_branch": "master"
+  }
 }
