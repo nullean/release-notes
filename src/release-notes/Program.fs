@@ -10,6 +10,16 @@ open Octokit
 open ReleaseNotes
 open ReleaseNotes.Arguments
 
+let private hasLatestRelease (config: ReleaseNotesConfig) (client: GitHubClient) =
+    try
+        let release =
+            client.Repository.Release.GetLatest(config.GitHub.Owner, config.GitHub.Repository)
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+        Some release
+     with _ ->
+        None
+
 let private releaseExists (config: ReleaseNotesConfig) (client: GitHubClient) version =
     let releaseTag = Labeler.releaseLabel version config.ReleaseTagFormat
 
@@ -73,25 +83,29 @@ let private locateOldVersion (config: ReleaseNotesConfig) (client: GitHubClient)
     | Some v -> Some v
     | None ->
         let semVerVersion = SemVer.parse config.Version
+        
+        match hasLatestRelease config client with
+        | None -> None
+        | Some _ -> 
+            let releases =
+                client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
 
-        let releases =
-            client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository)
-            |> Async.AwaitTask
-            |> Async.RunSynchronously
+            let foundOldVersion =
+                releases
+                |> Seq.filter (fun t -> SemVer.isValid t.TagName)
+                |> Seq.map (fun t -> SemVer.parse t.TagName)
+                |> Seq.filter (fun v -> v < semVerVersion)
+                |> Seq.sortByDescending (fun v -> v)
+                |> Seq.tryHead
 
-        let foundOldVersion =
-            releases
-            |> Seq.filter (fun t -> SemVer.isValid t.TagName)
-            |> Seq.map (fun t -> SemVer.parse t.TagName)
-            |> Seq.filter (fun v -> v < semVerVersion)
-            |> Seq.sortByDescending (fun v -> v)
-            |> Seq.tryHead
-
-        match releases.Count, foundOldVersion with
-        | 0, _ -> None
-        | 1, None -> None
-        | _, Some v -> Some(v.ToString())
-        | _ -> failwith "No previous version found!"
+            match releases.Count, foundOldVersion with
+            | 0, _ -> None
+            | 1, None -> None
+            | _, Some v -> Some(v.ToString())
+            | _ ->
+                None
 
 let private findCurrentAndNextVersion (config: ReleaseNotesConfig) (client: GitHubClient) versionQuery =
     let releases =

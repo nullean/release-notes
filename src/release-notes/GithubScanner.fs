@@ -70,10 +70,15 @@ let getClosedIssues (config:ReleaseNotesConfig) (client:GitHubClient) releasedLa
     let filter = RepositoryIssueRequest()
     filter.Labels.Add releasedLabel
     filter.State <- ItemStateFilter.Closed
-
-    client.Issue.GetAllForRepository(config.GitHub.Owner, config.GitHub.Repository, filter)
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
-    |> filterByPullRequests issueNumberRegex
-    |> groupByLabel config
+    
+    let issues =
+        try
+            client.Issue.GetAllForRepository(config.GitHub.Owner, config.GitHub.Repository, filter)
+            |> Async.AwaitTask
+            |> Async.RunSynchronously
+            |> filterByPullRequests issueNumberRegex
+        with _ ->
+           List<GitHubItem>()
+            
+    issues |> groupByLabel config
 
