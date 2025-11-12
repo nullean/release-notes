@@ -50,8 +50,8 @@ let private generateApiChanges (arguments:ParseResults<Arguments>) =
     let args =
         [
             "assembly-differ"
-            (sprintf "previous-nuget|%s|%s|netcoreapp3.1" Paths.ToolName currentVersion);
-            (sprintf "directory|src/%s/bin/Release/netcoreapp3.1" Paths.ToolName);
+            (sprintf "previous-nuget|%s|%s|net10.0" Paths.ToolName currentVersion);
+            (sprintf "directory|src/%s/bin/Release/net10.0" Paths.ToolName);
             "--target"; "release-notes"; "-f"; "github-comment"; "--output"; output
         ]
         
