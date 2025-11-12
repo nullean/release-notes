@@ -44,8 +44,8 @@ type Arguments =
             | Version _ -> "Version that is being released"
             | Token _ -> "The github token to use, if the issue list is long this may be necessary, defaults to anonymous"
             
-            | ApplyLabels _ -> "Creates version and backport labels"
-            | FindPreviousVersion _ -> "Find the previous release for the passed version"
+            | ApplyLabels -> "Creates version and backport labels"
+            | FindPreviousVersion -> "Find the previous release for the passed version"
             | CurrentVersion _ -> "Given search syntax finds the current and the next versions on separate lines"
             | CreateRelease _ -> "Makes sure the tag exists as release on github and introduces new version labels for the next major/minor/patch"
             
