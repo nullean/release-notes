@@ -3,22 +3,25 @@
   "isRoot": true,
   "tools": {
     "minver-cli": {
-      "version": "2.3.1",
+      "version": "6.0.0",
       "commands": [
         "minver"
-      ]
+      ],
+      "rollForward": false
     },
     "nupkg-validator": {
-      "version": "0.5.0",
+      "version": "0.10.0",
       "commands": [
         "nupkg-validator"
-      ]
+      ],
+      "rollForward": false
     },
     "assembly-differ": {
-      "version": "0.11.1",
+      "version": "0.16.0",
       "commands": [
         "assembly-differ"
-      ]
+      ],
+      "rollForward": false
     }
   }
 }

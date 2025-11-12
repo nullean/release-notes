@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/build/">
+    <File Path=".editorconfig" />
+    <File Path=".github/workflows/ci.yml" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="nuget-icon.png" />
+    <File Path="README.md" />
+    <Project Path="build/scripts/scripts.fsproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/release-notes/release-notes.fsproj" />
+  </Folder>
+</Solution>

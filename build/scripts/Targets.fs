@@ -10,17 +10,18 @@ open ProcNet
 
     
 let exec binary args =
-    let r = Proc.Exec (binary, args |> List.map (fun a -> sprintf "\"%s\"" a) |> List.toArray)
-    match r.HasValue with | true -> r.Value | false -> failwithf "invocation of `%s` timed out" binary
+    Proc.Exec (binary, args |> List.toArray)
     
 let private restoreTools = lazy(exec "dotnet" ["tool"; "restore"])
 let private currentVersion =
     lazy(
         restoreTools.Value |> ignore
-        let r = Proc.Start("dotnet", "minver", "-d=canary")
+        let r = Proc.Start("dotnet", "minver", "-p=canary.0", "-v=e", "-m=0.1")
         let o = r.ConsoleOut |> Seq.find (fun l -> not(l.Line.StartsWith("MinVer:")))
         o.Line
     )
+let private currentVersionInformational =
+    lazy (sprintf "%s+%s" currentVersion.Value (Information.getCurrentSHA1 "."))
 
 let private clean (arguments:ParseResults<Arguments>) =
     if (Paths.Output.Exists) then Paths.Output.Delete (true)
@@ -41,7 +42,7 @@ let private validatePackages (arguments:ParseResults<Arguments>) =
     let nugetPackage =
         let p = Paths.Output.GetFiles("*.nupkg") |> Seq.sortByDescending(fun f -> f.CreationTimeUtc) |> Seq.head
         Paths.RootRelative p.FullName
-    exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersion.Value; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"] |> ignore
+    exec "dotnet" ["nupkg-validator"; nugetPackage; "-v"; currentVersionInformational.Value; "-a"; Paths.ToolName; "-k"; "96c599bbe3e70f5d"] |> ignore
 
 let private generateApiChanges (arguments:ParseResults<Arguments>) =
     let output = Paths.RootRelative <| Paths.Output.FullName
@@ -49,8 +50,8 @@ let private generateApiChanges (arguments:ParseResults<Arguments>) =
     let args =
         [
             "assembly-differ"
-            (sprintf "previous-nuget|%s|%s|netcoreapp3.1" Paths.ToolName currentVersion);
-            (sprintf "directory|src/%s/bin/Release/netcoreapp3.1" Paths.ToolName);
+            (sprintf "previous-nuget|%s|%s|net10.0" Paths.ToolName currentVersion);
+            (sprintf "directory|src/%s/bin/Release/net10.0" Paths.ToolName);
             "--target"; "release-notes"; "-f"; "github-comment"; "--output"; output
         ]
         
@@ -61,7 +62,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
     let currentVersion = currentVersion.Value
     let output =
         Paths.RootRelative <| Path.Combine(Paths.Output.FullName, sprintf "release-notes-%s.md" currentVersion)
-    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "net5.0"; "-p"; project]
+    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "net10.0"; "-p"; project]
     let tokenArgs =
         match arguments.TryGetResult Token with
         | None -> []
@@ -80,7 +81,7 @@ let private generateReleaseNotes (arguments:ParseResults<Arguments>) =
 let private createReleaseOnGithub (arguments:ParseResults<Arguments>) =
     let project = Paths.RootRelative Paths.ToolProject.FullName
     let currentVersion = currentVersion.Value
-    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "net5.0"; "-p"; project]
+    let dotnetRun =[ "run"; "-c"; "Release"; "-f"; "net10.0"; "-p"; project]
     let tokenArgs =
         match arguments.TryGetResult Token with
         | None -> []
