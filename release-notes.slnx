@@ -10,6 +10,6 @@
     <Project Path="build/scripts/scripts.fsproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/release-notes/release-notes.fsproj" />
+    <Project Path="src/release-notes/release-notes.csproj" />
   </Folder>
 </Solution>

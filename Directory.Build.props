@@ -3,6 +3,8 @@
   <PropertyGroup>
     <MinVerDefaultPreReleaseIdentifiers>canary.0</MinVerDefaultPreReleaseIdentifiers>
     <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
+    <!-- Nullean.Argh's source-generated dispatch code uses C# 13 syntax regardless of the TFM it targets. -->
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MinVer" Version="6.0.0">

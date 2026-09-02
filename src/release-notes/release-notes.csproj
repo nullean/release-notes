@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <AssemblyName>release-notes</AssemblyName>
+    <RootNamespace>ReleaseNotes</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>release-notes</ToolCommandName>
+    <RollForward>Major</RollForward>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)..\..\build\keys\keypair.snk</AssemblyOriginatorKeyFile>
+
+    <PackageIcon>nuget-icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/nullean/release-notes</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/nullean/release-notes</PackageProjectUrl>
+    <PackageReleaseNotes>https://github.com/nullean/release-notes/releases</PackageReleaseNotes>
+
+    <Title>release-notes: a dotnet tool to generate release notes from GitHub</Title>
+    <Description>Generate release notes from closed github issues and PR's through the power of version labels</Description>
+
+    <!-- Native-AOT tool packaging: one package per RID plus an 'any' framework-dependent fallback.
+         The root package's DotnetToolSettings.xml (v2) maps each RID to its per-RID package.
+         Installing requires the .NET 10 SDK or greater. -->
+    <RuntimeIdentifiers>linux-x64;linux-arm64;win-x64;win-arm64;osx-arm64;any</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <!-- AOT settings apply only when a specific RID is targeted (dotnet pack -r <rid>). Without this
+       guard they get baked into the runtimeconfig.json of the portable 'any' fallback too. Signing is
+       skipped for the same reason: a native-AOT build has no loadable managed assembly to sign. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <PublishAot>true</PublishAot>
+    <PublishSelfContained>true</PublishSelfContained>
+    <StripSymbols>true</StripSymbols>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nullean.Argh" Version="0.18.0" />
+    <PackageReference Include="Octokit" Version="14.0.0" />
+    <PackageReference Include="NuGet.Versioning" Version="6.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\nuget-icon.png" CopyToOutputDirectory="PreserveNewest">
+      <Link>nuget-icon.png</Link>
+      <Pack>True</Pack>
+      <PackagePath>nuget-icon.png</PackagePath>
+    </Content>
+  </ItemGroup>
+
+</Project>
