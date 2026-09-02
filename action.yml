@@ -1,0 +1,27 @@
+name: 'release-notes'
+description: 'Generate release notes from closed GitHub issues and PRs, grouped by version label'
+branding:
+  icon: 'file-text'
+  color: 'blue'
+inputs:
+  command:
+    description: 'One of: generate, apply-labels, find-previous, current-version, create-release'
+    required: true
+  owner:
+    description: 'GitHub repository owner'
+    required: true
+  repo:
+    description: 'GitHub repository name'
+    required: true
+  args:
+    description: 'Extra arguments passed through to release-notes verbatim, e.g. "--version 1.0.0 --label bug=Bug Fixes"'
+    required: false
+    default: ''
+runs:
+  using: 'docker'
+  image: 'docker://ghcr.io/nullean/release-notes:edge'
+  args:
+    - ${{ inputs.command }}
+    - ${{ inputs.owner }}
+    - ${{ inputs.repo }}
+    - ${{ inputs.args }}
