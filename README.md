@@ -18,6 +18,35 @@ On Linux, Windows and macOS/arm64, this resolves to a self-contained native-AOT 
 shared .NET runtime required, and no first-run JIT warmup. Everywhere else, it falls back to a
 framework-dependent build (requires the .NET runtime the tool targets to already be installed).
 
+## GitHub Action
+
+```yaml
+- uses: nullean/release-notes@main
+  with:
+    command: generate
+    owner: nullean
+    repo: release-notes
+    args: --version 1.0.0
+```
+
+Runs `release-notes` from a pre-built, distroless container (`ghcr.io/nullean/release-notes`) — no .NET
+SDK install needed in the workflow. `command` is one of `generate`, `apply-labels`, `find-previous`,
+`current-version`, or `create-release`; extra flags pass through verbatim via `args`. Linux runners only
+(`ubuntu-latest` and similar) — container actions can't run on Windows or macOS runners.
+
+## Container image
+
+`ghcr.io/nullean/release-notes` also works as a general-purpose container, outside GitHub Actions —
+GitLab CI, a local machine without the .NET SDK, anywhere `docker run` works:
+
+```sh
+docker run --rm ghcr.io/nullean/release-notes:edge generate nullean release-notes --version 1.0.0 --token "$GITHUB_TOKEN"
+```
+
+Distroless: native-AOT, chiseled `runtime-deps` base, no shell, runs as a non-root user. Tags follow
+`release-notes`'s own releases — `edge` tracks the latest commit on `master`, `latest` and a semver tag
+(e.g. `0.10.0`) follow tagged releases.
+
 ## Run
 
 ```bat
