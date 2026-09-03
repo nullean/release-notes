@@ -51,7 +51,12 @@ public static class ReleaseNotesRunner
 			await client.Repository.Release.Edit(config.GitHub.Owner, config.GitHub.Repository, existing.Id, new ReleaseUpdate { Body = body.ToString() });
 		}
 		else
-			await client.Repository.Release.Create(config.GitHub.Owner, config.GitHub.Repository, new NewRelease(config.Version) { Body = body.ToString() });
+		{
+			// Not client.Repository.Release.Create() - see GitHubReleaseClient's remarks for why Octokit's
+			// own NewRelease serialization silently drops tag_name under Native AOT.
+			using var httpClient = new HttpClient();
+			await GitHubReleaseClient.CreateRelease(httpClient, config.GitHub.Owner, config.GitHub.Repository, config.Version, body.ToString(), config.Token);
+		}
 	}
 
 	private static async Task<string?> LocateOldVersion(ReleaseNotesConfig config, GitHubClient client)
