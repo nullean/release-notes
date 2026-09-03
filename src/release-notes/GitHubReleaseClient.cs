@@ -4,42 +4,69 @@ using System.Text.Json.Serialization;
 namespace ReleaseNotes;
 
 /// <summary>
-/// Minimal, source-generated-JSON client for creating a GitHub release directly against the REST API.
+/// Minimal, source-generated-JSON client for the GitHub REST calls that write data (create/update releases,
+/// create labels), bypassing Octokit for those specific calls.
 /// </summary>
 /// <remarks>
-/// Octokit.Repository.Release.Create can't be used here: Octokit's SimpleJsonSerializer serializes request
-/// bodies via raw, unannotated reflection (no [DynamicallyAccessedMembers] anywhere in Octokit/SimpleJson.cs),
-/// and under Native AOT trimming the linker strips getter metadata for any property whose accessors have
-/// mixed visibility. NewRelease.TagName is "public get; private set;" - the only such property among every
-/// request model this tool sends - so in an AOT-published build tag_name silently vanishes from the outgoing
-/// JSON while every other field (all plain public get/set) still serializes fine. GitHub then rejects the
-/// request with 422 "tag_name" wasn't supplied, even though the C# call site clearly set it. Everything else
-/// this tool does through Octokit (GetLatest/Get, ReleaseUpdate, labels) uses only plain public get/set
-/// models, so those aren't affected - only the Create path needs this workaround.
+/// Octokit's SimpleJsonSerializer serializes request bodies via raw, unannotated reflection (no
+/// [DynamicallyAccessedMembers] anywhere in Octokit/SimpleJson.cs). Under Native AOT, the ILC compiler's
+/// reflection analysis decides - per member, based on a whole-program heuristic with no annotations to guide
+/// it - which property getters get an invocable reflection stub; it isn't simply "properties with a
+/// non-public accessor get dropped". We first hit this on NewRelease.TagName (public get, private set: 422
+/// "tag_name" wasn't supplied), then on NewLabel.Name, a perfectly ordinary public get/set property on an
+/// unrelated model: 422 "name" wasn't supplied. Since there's no reliable per-property rule to work around,
+/// and Octokit ships no JsonSerializerContext or other AOT-safe serialization path, every Octokit call that
+/// serializes a request body is suspect. Read-only calls (Get/GetLatest, label/branch lookups) only need
+/// deserialization, which hasn't shown this failure mode, so those keep using Octokit's GitHubClient.
 /// </remarks>
 internal static class GitHubReleaseClient
 {
-	public static async Task CreateRelease(HttpClient httpClient, string owner, string repository, string tagName, string? body, string? token)
+	private static HttpRequestMessage BuildRequest(HttpMethod method, string owner, string repository, string path, HttpContent content, string? token)
 	{
-		using var request = new HttpRequestMessage(HttpMethod.Post, $"https://api.github.com/repos/{owner}/{repository}/releases")
-		{
-			Content = System.Net.Http.Json.JsonContent.Create(
-				new GitHubNewReleaseRequest { TagName = tagName, Body = body },
-				GitHubReleaseJsonContext.Default.GitHubNewReleaseRequest)
-		};
+		var request = new HttpRequestMessage(method, $"https://api.github.com/repos/{owner}/{repository}/{path}") { Content = content };
 		request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
 		request.Headers.UserAgent.Add(new ProductInfoHeaderValue("ReleaseNotesGenerator", "1.0"));
 		request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
 		if (token is { Length: > 0 })
 			request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+		return request;
+	}
 
+	private static async Task Send(HttpClient httpClient, HttpRequestMessage request, string errorContext)
+	{
 		using var response = await httpClient.SendAsync(request);
 		if (!response.IsSuccessStatusCode)
 		{
 			var responseBody = await response.Content.ReadAsStringAsync();
-			throw new InvalidOperationException(
-				$"Failed to create GitHub release for tag '{tagName}' on {owner}/{repository}: {(int)response.StatusCode} {response.StatusCode}\n{responseBody}");
+			throw new InvalidOperationException($"{errorContext}: {(int)response.StatusCode} {response.StatusCode}\n{responseBody}");
 		}
+	}
+
+	public static Task CreateRelease(HttpClient httpClient, string owner, string repository, string tagName, string? body, string? token)
+	{
+		var content = System.Net.Http.Json.JsonContent.Create(
+			new GitHubNewReleaseRequest { TagName = tagName, Body = body },
+			GitHubJsonContext.Default.GitHubNewReleaseRequest);
+		var request = BuildRequest(HttpMethod.Post, owner, repository, "releases", content, token);
+		return Send(httpClient, request, $"Failed to create GitHub release for tag '{tagName}' on {owner}/{repository}");
+	}
+
+	public static Task UpdateRelease(HttpClient httpClient, string owner, string repository, long releaseId, string? body, string? token)
+	{
+		var content = System.Net.Http.Json.JsonContent.Create(
+			new GitHubReleaseUpdateRequest { Body = body },
+			GitHubJsonContext.Default.GitHubReleaseUpdateRequest);
+		var request = BuildRequest(HttpMethod.Patch, owner, repository, $"releases/{releaseId}", content, token);
+		return Send(httpClient, request, $"Failed to update GitHub release {releaseId} on {owner}/{repository}");
+	}
+
+	public static Task CreateLabel(HttpClient httpClient, string owner, string repository, string name, string color, string? token)
+	{
+		var content = System.Net.Http.Json.JsonContent.Create(
+			new GitHubNewLabelRequest { Name = name, Color = color },
+			GitHubJsonContext.Default.GitHubNewLabelRequest);
+		var request = BuildRequest(HttpMethod.Post, owner, repository, "labels", content, token);
+		return Send(httpClient, request, $"Failed to create GitHub label '{name}' on {owner}/{repository}");
 	}
 }
 
@@ -52,5 +79,22 @@ internal sealed class GitHubNewReleaseRequest
 	public string? Body { get; set; }
 }
 
+internal sealed class GitHubReleaseUpdateRequest
+{
+	[JsonPropertyName("body")]
+	public string? Body { get; set; }
+}
+
+internal sealed class GitHubNewLabelRequest
+{
+	[JsonPropertyName("name")]
+	public required string Name { get; set; }
+
+	[JsonPropertyName("color")]
+	public required string Color { get; set; }
+}
+
 [JsonSerializable(typeof(GitHubNewReleaseRequest))]
-internal partial class GitHubReleaseJsonContext : JsonSerializerContext;
+[JsonSerializable(typeof(GitHubReleaseUpdateRequest))]
+[JsonSerializable(typeof(GitHubNewLabelRequest))]
+internal partial class GitHubJsonContext : JsonSerializerContext;
