@@ -13,7 +13,16 @@ open ProcNet
 let exec binary args =
     Proc.Exec (binary, args |> List.toArray)
     
-let private restoreTools = lazy(exec "dotnet" ["tool"; "restore"])
+/// dotnet/sdk#53783: on a cold tool-resolver cache (every fresh CI runner, every fresh container),
+/// restoring 2+ RID-specific tool packages in one manifest can misattribute one package's
+/// DotnetToolSettings.xml to another, failing with "The command ... is not contained in the
+/// package ...". The cache is warm after the first attempt, so a bare retry always succeeds -
+/// see https://github.com/dotnet/sdk/issues/53783.
+let private restoreTools =
+    lazy(
+        try exec "dotnet" ["tool"; "restore"]
+        with _ -> exec "dotnet" ["tool"; "restore"]
+    )
 let private currentVersion =
     lazy(
         restoreTools.Value |> ignore
@@ -100,7 +109,11 @@ let private generateApiChanges (arguments:ParseResults<Arguments>) =
     let args =
         [
             "assembly-differ"
-            (sprintf "previous-nuget|%s|%s|net10.0" Paths.ToolName currentVersion);
+            // The plain "release-notes" package id is just a DotnetToolSettings.xml v2 shim pointing
+            // at per-RID sub-packages (see generatePackages above) - it ships no managed assembly of
+            // its own, so NuGetAssemblyProvider would find 0 assemblies there. The portable, signed
+            // managed build lives in "release-notes.any" instead.
+            (sprintf "previous-nuget|%s.any|%s|net10.0" Paths.ToolName currentVersion);
             (sprintf "directory|src/%s/bin/Release/net10.0" Paths.ToolName);
             "--target"; "release-notes"; "-f"; "github-comment"; "--output"; output
         ]
