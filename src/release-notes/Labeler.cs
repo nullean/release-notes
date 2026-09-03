@@ -20,7 +20,10 @@ public static class Labeler
 			// Label does not exist yet; fall through and create it.
 		}
 
-		await client.Issue.Labels.Create(config.GitHub.Owner, config.GitHub.Repository, new NewLabel(label, config.LabelColor));
+		// Not client.Issue.Labels.Create() - see GitHubReleaseClient's remarks for why Octokit's own request
+		// serialization is unreliable under Native AOT.
+		using var httpClient = new HttpClient();
+		await GitHubReleaseClient.CreateLabel(httpClient, config.GitHub.Owner, config.GitHub.Repository, label, config.LabelColor, config.Token);
 	}
 
 	private static async Task<Branch?> ExistsBranch(ReleaseNotesConfig config, GitHubClient client, string branch)
