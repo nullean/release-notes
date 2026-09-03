@@ -44,17 +44,12 @@ public static class ReleaseNotesRunner
 		foreach (var f in files)
 			body.AppendLine(await File.ReadAllTextAsync(f));
 
-		// Not client.Repository.Release.Create()/Edit() - see GitHubReleaseClient's remarks for why Octokit's
-		// own request serialization is unreliable under Native AOT.
+		// Not client.Repository.Release.Get()/Create()/Edit() - see GitHubReleaseClient's remarks for why
+		// both Octokit's request serialization and its response deserialization are unreliable under Native
+		// AOT. CreateOrUpdateRelease is a self-contained upsert; it doesn't need (or trust) a separate
+		// existence check first.
 		using var httpClient = new HttpClient();
-		var existing = await ReleaseExists(config, client, config.Version);
-		if (existing is not null)
-		{
-			Console.WriteLine("Found release");
-			await GitHubReleaseClient.UpdateRelease(httpClient, config.GitHub.Owner, config.GitHub.Repository, existing.Id, body.ToString(), config.Token);
-		}
-		else
-			await GitHubReleaseClient.CreateRelease(httpClient, config.GitHub.Owner, config.GitHub.Repository, config.Version, body.ToString(), config.Token);
+		await GitHubReleaseClient.CreateOrUpdateRelease(httpClient, config.GitHub.Owner, config.GitHub.Repository, config.Version, body.ToString(), config.Token);
 	}
 
 	private static async Task<string?> LocateOldVersion(ReleaseNotesConfig config, GitHubClient client)
