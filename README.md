@@ -44,7 +44,7 @@ docker run --rm ghcr.io/nullean/release-notes:edge generate nullean release-note
 ```
 
 Distroless: native-AOT, chiseled `runtime-deps` base, no shell, runs as a non-root user. Tags follow
-`release-notes`'s own releases — `edge` tracks the latest commit on `master`, `latest` and a semver tag
+`release-notes`'s own releases — `edge` tracks the latest commit on `main`, `latest` and a semver tag
 (e.g. `0.10.0`) follow tagged releases.
 
 ## Run
