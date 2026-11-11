@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/build/">
     <File Path=".editorconfig" />
+    <File Path="AGENTS.md" />
     <File Path=".github/workflows/ci.yml" />
     <File Path="Directory.Build.props" />
     <File Path="global.json" />
+    <File Path="mise.toml" />
     <File Path="LICENSE" />
     <File Path="nuget-icon.png" />
     <File Path="README.md" />
