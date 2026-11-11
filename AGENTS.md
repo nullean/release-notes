@@ -17,8 +17,8 @@ container (`ghcr.io/nullean/release-notes`) and a GitHub Action (`action.yml`) t
 
 ## Commands
 
-mise installs the SDK pinned in `global.json` (plus the net10.0 runtime the build, nupkg-validator and the release steps
-run on). Run everything through it:
+mise installs the SDK pinned in `global.json` (plus the net10.0 runtime the build and nupkg-validator run on). Run
+everything through it:
 
 ```bash
 mise run build    # build the solution
@@ -26,12 +26,20 @@ mise run pack     # build, pack, validate the packages, report public API change
 mise run ci       # what CI's build job runs (there are no tests, so this is pack)
 mise run check    # workflow security checks (zizmor)
 mise run clean    # delete build output
+mise run release  # show the release draft; `mise run release publish` releases
 ```
 
 `mise tasks ls` lists them all. Packages and API reports go to `build/output`. `./build.sh <target>` runs the same
-build targets directly; CI calls it for each step, and for the ones `mise` has no task for (`publishcontainers`, the
-release steps). This repository releases itself: `generatereleasenotes` and `createreleaseongithub` run the tool from
-source.
+build targets directly; CI calls it step by step, including `publishcontainers`, which has no `mise` task.
+
+## Releasing
+
+release-drafter keeps a draft release up to date from the labels of merged pull requests. **Publishing the draft**
+releases: it creates the tag, and `ci.yml` runs on it to build every RID's native-AOT package, push
+`ghcr.io/nullean/release-notes` (tagged `latest` and the version) and push the packages to nuget.org. `mise run release`
+shows the draft. The [releasing](.claude/skills/releasing/SKILL.md) and
+[breaking-changes](.claude/skills/breaking-changes/SKILL.md) skills have the details. Every pull request carries exactly
+one release label. This repository's own releases do not run the tool: release-drafter writes their notes.
 
 ## Packaging
 
