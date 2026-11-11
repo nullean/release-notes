@@ -11,7 +11,8 @@ public sealed class OutputWriter : IDisposable
 	public OutputWriter(string? output)
 	{
 		_output = output;
-		if (output is null) return;
+		if (output is null)
+			return;
 
 		Console.WriteLine();
 		Console.WriteLine($"Building {output}");

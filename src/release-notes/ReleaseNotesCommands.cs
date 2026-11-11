@@ -5,9 +5,15 @@ namespace ReleaseNotes;
 internal sealed class ReleaseNotesCommands
 {
 	private static ReleaseNotesConfig BuildConfig(
-		string owner, string repositoryName, ReleaseNotesOptions opts,
-		bool applyLabels = false, bool generateReleaseOnGithub = false, bool oldVersionOnly = false,
-		string? versionQuery = null, IReadOnlyList<string>? releaseBodyFiles = null) =>
+		string owner,
+		string repositoryName,
+		ReleaseNotesOptions opts,
+		bool applyLabels = false,
+		bool generateReleaseOnGithub = false,
+		bool oldVersionOnly = false,
+		string? versionQuery = null,
+		IReadOnlyList<string>? releaseBodyFiles = null
+	) =>
 		new()
 		{
 			GitHub = new GitHubRepository(owner, repositoryName),
@@ -72,6 +78,10 @@ internal sealed class ReleaseNotesCommands
 	/// once to combine multiple files.
 	/// </param>
 	[CommandName("create-release")]
-	public async Task<int> CreateRelease([Argument] string owner, [Argument] string repositoryName, [AsParameters] ReleaseNotesOptions opts, List<string>? body = null) =>
-		await ReleaseNotesRunner.Run(BuildConfig(owner, repositoryName, opts, generateReleaseOnGithub: true, releaseBodyFiles: body));
+	public async Task<int> CreateRelease(
+		[Argument] string owner,
+		[Argument] string repositoryName,
+		[AsParameters] ReleaseNotesOptions opts,
+		List<string>? body = null
+	) => await ReleaseNotesRunner.Run(BuildConfig(owner, repositoryName, opts, generateReleaseOnGithub: true, releaseBodyFiles: body));
 }

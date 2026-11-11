@@ -27,7 +27,8 @@ public sealed record ReleaseNotesOptions(
 	Format Format = Format.Markdown,
 	string? UncategorizedHeader = null,
 	List<string>? Label = null,
-	string? Output = null)
+	string? Output = null
+)
 {
 	public const string UncategorizedLabel = "Uncategorized";
 
@@ -39,12 +40,7 @@ public sealed record ReleaseNotesOptions(
 	{
 		var entries = Label is { Count: > 0 }
 			? Label.Select(ParseLabel)
-			:
-			[
-				("bug", "Bug Fixes"),
-				("enhancement", "New Features"),
-				("documentation", "Documentation Improvements")
-			];
+			: [("bug", "Bug Fixes"), ("enhancement", "New Features"), ("documentation", "Documentation Improvements")];
 
 		var map = new Dictionary<string, string> { [UncategorizedLabel] = UncategorizedHeader ?? UncategorizedLabel };
 		foreach (var (label, description) in entries)

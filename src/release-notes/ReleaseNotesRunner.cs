@@ -38,7 +38,8 @@ public static class ReleaseNotesRunner
 		var unknownFiles = files.Where(f => !File.Exists(f)).ToList();
 		if (unknownFiles.Count > 0)
 			throw new InvalidOperationException(
-				$"The following files were not found and can not be read to include in the release body: {string.Join(", ", unknownFiles)}");
+				$"The following files were not found and can not be read to include in the release body: {string.Join(", ", unknownFiles)}"
+			);
 
 		var body = new StringBuilder();
 		foreach (var f in files)
@@ -49,15 +50,24 @@ public static class ReleaseNotesRunner
 		// AOT. CreateOrUpdateRelease is a self-contained upsert; it doesn't need (or trust) a separate
 		// existence check first.
 		using var httpClient = new HttpClient();
-		await GitHubReleaseClient.CreateOrUpdateRelease(httpClient, config.GitHub.Owner, config.GitHub.Repository, config.Version, body.ToString(), config.Token);
+		await GitHubReleaseClient.CreateOrUpdateRelease(
+			httpClient,
+			config.GitHub.Owner,
+			config.GitHub.Repository,
+			config.Version,
+			body.ToString(),
+			config.Token
+		);
 	}
 
 	private static async Task<string?> LocateOldVersion(ReleaseNotesConfig config, GitHubClient client)
 	{
-		if (config.OldVersion is not null) return config.OldVersion;
+		if (config.OldVersion is not null)
+			return config.OldVersion;
 
 		var semVerVersion = NuGetVersion.Parse(config.Version);
-		if (await HasLatestRelease(config, client) is null) return null;
+		if (await HasLatestRelease(config, client) is null)
+			return null;
 
 		var releases = await client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository);
 
@@ -76,7 +86,11 @@ public static class ReleaseNotesRunner
 		};
 	}
 
-	private static async Task<(NuGetVersion Current, NuGetVersion Next)?> FindCurrentAndNextVersion(ReleaseNotesConfig config, GitHubClient client, string versionQuery)
+	private static async Task<(NuGetVersion Current, NuGetVersion Next)?> FindCurrentAndNextVersion(
+		ReleaseNotesConfig config,
+		GitHubClient client,
+		string versionQuery
+	)
 	{
 		var releases = await client.Repository.Release.GetAll(config.GitHub.Owner, config.GitHub.Repository);
 
@@ -161,9 +175,11 @@ public static class ReleaseNotesRunner
 	private static async Task WriteAsciiDocReleaseNotes(ReleaseNotesConfig config, GitHubClient client, string? oldVersion)
 	{
 		_ = oldVersion;
-		if (config.Output is null) return;
+		if (config.Output is null)
+			return;
 
 		var d = Directory.CreateDirectory(config.Output);
+
 		FileInfo Path_(string f) => new(Path.Combine(d.FullName, f));
 
 		var cv = NuGetVersion.Parse(config.Version);
@@ -183,8 +199,9 @@ public static class ReleaseNotesRunner
 			writer.WriteLine("");
 			var releasedLabel = Labeler.ReleaseLabel(config.Version, config.ReleaseLabelFormat);
 
-			var groupedClosedIssues = (await GithubScanner.GetClosedIssues(config, client, releasedLabel))
-				.OrderBy(kv => kv.Key == ReleaseNotesOptions.UncategorizedLabel ? -1 : kv.Key.Length);
+			var groupedClosedIssues = (await GithubScanner.GetClosedIssues(config, client, releasedLabel)).OrderBy(
+				kv => kv.Key == ReleaseNotesOptions.UncategorizedLabel ? -1 : kv.Key.Length
+			);
 
 			foreach (var (key, issues) in groupedClosedIssues)
 			{
@@ -213,7 +230,8 @@ public static class ReleaseNotesRunner
 		void WriteVersioned()
 		{
 			using var writer = new OutputWriter(versionNotes.FullName);
-			writer.WriteLine($"""
+			writer.WriteLine(
+				$"""
 				[float]
 				[[release-notes-{cv}]]
 				== Release-Notes {cv}
@@ -221,19 +239,22 @@ public static class ReleaseNotesRunner
 				include::{humanNotes.Name}[]
 				include::{generatedNotes.Name}[]
 
-				""");
+				"""
+			);
 		}
 
 		WriteVersioned();
 
 		// Write release notes landing page.
-		var currentPatchReleases = Enumerable.Range(0, (int)cv.Patch + 1)
+		var currentPatchReleases = Enumerable
+			.Range(0, (int)cv.Patch + 1)
 			.Reverse()
 			.Select(patch => NuGetVersion.Parse($"{cv.Major}.{cv.Minor}.{patch}"))
 			.ToList();
 
 		using var indexWriter = new OutputWriter(releaseNotes.FullName);
-		indexWriter.WriteLine($"""
+		indexWriter.WriteLine(
+			$"""
 			[[release-notes]]
 			= Release notes
 
@@ -244,7 +265,8 @@ public static class ReleaseNotesRunner
 			* <<release-notes-{cv}>>
 			--
 
-			""");
+			"""
+		);
 
 		foreach (var v in currentPatchReleases)
 		{
@@ -256,21 +278,23 @@ public static class ReleaseNotesRunner
 			else
 			{
 				var r = await ReleaseExists(config, client, v.ToString());
-				indexWriter.WriteLine(r is not null
-					? $"""
+				indexWriter.WriteLine(
+					r is not null
+						? $"""
 						[float]
 						[[release-notes-{v}]]
 						== Release-Notes {v}
 						{r.HtmlUrl}[Available on github]
 
 						"""
-					: $"""
+						: $"""
 						[float]
 						[[release-notes-{v}]]
 						== Release-Notes {v}
 						No release notes available
 
-						""");
+						"""
+				);
 			}
 		}
 	}
