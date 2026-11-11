@@ -11,13 +11,13 @@ container (`ghcr.io/nullean/release-notes`) and a GitHub Action (`action.yml`) t
 |---|---|
 | `src/release-notes` | the tool (net8.0 and net10.0), a `Nullean.Argh` CLI; `ReleaseNotesCommands.cs` holds the commands |
 | `src/release-notes/GitHubReleaseClient.cs` | the GitHub writes (releases, labels), source-generated JSON instead of Octokit |
-| `build/scripts` | the F# build the `mise` tasks and CI call |
+| `build/scripts` | the F# build ([Nullean.Make.Fs](https://www.nuget.org/packages/Nullean.Make.Fs), net11.0) the `mise` tasks and CI call |
 | `build/keys` | the strong-name key the tool's own assembly is signed with |
 | `action.yml` | the GitHub Action: runs the `edge` container image |
 
 ## Commands
 
-mise installs the SDK pinned in `global.json` (plus the net10.0 runtime the build and nupkg-validator run on). Run
+mise installs the SDK pinned in `global.json` (plus the net10.0 runtime nupkg-validator runs on). Run
 everything through it:
 
 ```bash
@@ -57,3 +57,6 @@ one release label. This repository's own releases do not run the tool: release-d
   builds rely on. Removing or renaming any of it is a breaking change.
 - Octokit's reflection-based JSON is unreliable under native AOT (see the remarks on `GitHubReleaseClient`). Request
   bodies go through `GitHubJsonContext`, and writes are idempotent upserts rather than check-then-create.
+- Build targets are Make.Fs `target { }` blocks in `build/scripts/Program.fs` whose commands are Proc.Fs `sh $"…"`
+  lines; values come from `text` inside `shell { }` (`Versions.fs`). Do not call the C# `ProcNet` API from the build.
+  CI calls targets by name (`./build.sh generatepackages -s true`): keep multi-word case names as one word.
