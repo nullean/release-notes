@@ -78,13 +78,7 @@ public static class Labeler
 		}
 
 		var v = NuGetVersion.Parse(config.Version);
-		string[] backportBranches =
-		[
-			$"{v.Major}.x",
-			$"{v.Major}.{v.Minor}",
-			$"{v.Major + 1}.x",
-			$"{v.Major}.{v.Minor + 1}"
-		];
+		string[] backportBranches = [$"{v.Major}.x", $"{v.Major}.{v.Minor}", $"{v.Major + 1}.x", $"{v.Major}.{v.Minor + 1}"];
 
 		foreach (var branch in backportBranches)
 		{

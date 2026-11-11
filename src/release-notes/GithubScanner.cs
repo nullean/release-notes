@@ -8,7 +8,10 @@ public static class GithubScanner
 	public static Regex IssueNumberRegex(string url)
 	{
 		var pattern = $@"\s(?:#|{Regex.Escape(url)}issues/)(?<num>\d+)";
-		return new Regex(pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+		return new Regex(
+			pattern,
+			RegexOptions.Multiline | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.ExplicitCapture | RegexOptions.Compiled
+		);
 	}
 
 	// Preserves the upstream (Argu/F#) tool's grouping order exactly: within each label bucket, items are
@@ -52,12 +55,11 @@ public static class GithubScanner
 	{
 		List<int> ExtractRelatedIssues(Issue issue)
 		{
-			if (issue.Body is null) return [];
+			if (issue.Body is null)
+				return [];
 
 			var matches = issueNumberRegex.Matches(issue.Body);
-			return matches.Count == 0
-				? []
-				: matches.Where(m => m.Success).Select(m => int.Parse(m.Groups["num"].Value)).ToList();
+			return matches.Count == 0 ? [] : matches.Where(m => m.Success).Select(m => int.Parse(m.Groups["num"].Value)).ToList();
 		}
 
 		var collectedIssues = new List<GitHubItem>();
@@ -76,8 +78,8 @@ public static class GithubScanner
 
 		// Remove all issues that are referenced by pull requests.
 		foreach (var pullRequest in items)
-		foreach (var relatedIssue in pullRequest.RelatedIssues)
-			collectedIssues.RemoveAll(i => i.Issue.Number == relatedIssue);
+			foreach (var relatedIssue in pullRequest.RelatedIssues)
+				collectedIssues.RemoveAll(i => i.Issue.Number == relatedIssue);
 
 		// Any remaining issues do not have an associated pull request, so add them.
 		items.AddRange(collectedIssues);

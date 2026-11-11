@@ -60,9 +60,12 @@ internal static class GitHubReleaseClient
 	/// <summary>Creates the release for <paramref name="tagName"/>, or updates it in place if it already exists.</summary>
 	public static async Task CreateOrUpdateRelease(HttpClient httpClient, string owner, string repository, string tagName, string? body, string? token)
 	{
-		var content = System.Net.Http.Json.JsonContent.Create(
-			new GitHubNewReleaseRequest { TagName = tagName, Body = body },
-			GitHubJsonContext.Default.GitHubNewReleaseRequest);
+		var content = System
+			.Net
+			.Http
+			.Json
+			.JsonContent
+			.Create(new GitHubNewReleaseRequest { TagName = tagName, Body = body }, GitHubJsonContext.Default.GitHubNewReleaseRequest);
 		var request = BuildRequest(HttpMethod.Post, owner, repository, "releases", content, token);
 		using var response = await httpClient.SendAsync(request);
 		if (response.IsSuccessStatusCode)
@@ -70,10 +73,14 @@ internal static class GitHubReleaseClient
 
 		var responseBody = await response.Content.ReadAsStringAsync();
 		if (response.StatusCode != System.Net.HttpStatusCode.UnprocessableEntity || !responseBody.Contains("already_exists"))
-			throw new InvalidOperationException($"Failed to create GitHub release for tag '{tagName}' on {owner}/{repository}: {(int)response.StatusCode} {response.StatusCode}\n{responseBody}");
+			throw new InvalidOperationException(
+				$"Failed to create GitHub release for tag '{tagName}' on {owner}/{repository}: {(int)response.StatusCode} {response.StatusCode}\n{responseBody}"
+			);
 
-		var releaseId = await GetReleaseIdByTag(httpClient, owner, repository, tagName, token)
-			?? throw new InvalidOperationException($"GitHub reports release for tag '{tagName}' on {owner}/{repository} already exists, but it couldn't be found by tag to update its body.");
+		var releaseId = await GetReleaseIdByTag(httpClient, owner, repository, tagName, token) ??
+			throw new InvalidOperationException(
+				$"GitHub reports release for tag '{tagName}' on {owner}/{repository} already exists, but it couldn't be found by tag to update its body."
+			);
 		await UpdateRelease(httpClient, owner, repository, releaseId, body, token);
 	}
 
@@ -90,18 +97,24 @@ internal static class GitHubReleaseClient
 
 	public static Task UpdateRelease(HttpClient httpClient, string owner, string repository, long releaseId, string? body, string? token)
 	{
-		var content = System.Net.Http.Json.JsonContent.Create(
-			new GitHubReleaseUpdateRequest { Body = body },
-			GitHubJsonContext.Default.GitHubReleaseUpdateRequest);
+		var content = System
+			.Net
+			.Http
+			.Json
+			.JsonContent
+			.Create(new GitHubReleaseUpdateRequest { Body = body }, GitHubJsonContext.Default.GitHubReleaseUpdateRequest);
 		var request = BuildRequest(HttpMethod.Patch, owner, repository, $"releases/{releaseId}", content, token);
 		return Send(httpClient, request, $"Failed to update GitHub release {releaseId} on {owner}/{repository}");
 	}
 
 	public static Task CreateLabel(HttpClient httpClient, string owner, string repository, string name, string color, string? token)
 	{
-		var content = System.Net.Http.Json.JsonContent.Create(
-			new GitHubNewLabelRequest { Name = name, Color = color },
-			GitHubJsonContext.Default.GitHubNewLabelRequest);
+		var content = System
+			.Net
+			.Http
+			.Json
+			.JsonContent
+			.Create(new GitHubNewLabelRequest { Name = name, Color = color }, GitHubJsonContext.Default.GitHubNewLabelRequest);
 		var request = BuildRequest(HttpMethod.Post, owner, repository, "labels", content, token);
 		return Send(httpClient, request, $"Failed to create GitHub label '{name}' on {owner}/{repository}", ignoreAlreadyExists: true);
 	}
