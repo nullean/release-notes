@@ -1,17 +1,41 @@
 # release-notes
 
+![nullean](https://raw.githubusercontent.com/nullean/nullean.github.io/main/assets/nullean-lockup-544x192.png)
+
 A .NET tool that writes release notes for a GitHub repository from the issues and pull requests labelled with the
 version being released (`v1.2.3` by default), grouped into sections by their other labels.
 
-```bash
+[![NuGet](https://img.shields.io/nuget/v/release-notes?style=flat-square)](https://www.nuget.org/packages/release-notes)
+
+## Install
+
+```sh
 dotnet tool install --global release-notes
-release-notes generate nullean my-repo --version 1.2.3 --label "bug=Bug Fixes" --label "enhancement=New Features" \
-  --output release-notes-VERSION.md
 ```
 
-## Commands
+On Linux (x64, arm64), Windows (x64, arm64) and macOS (arm64) this installs a native-AOT executable from the
+`release-notes.<rid>` package; everywhere else it falls back to the framework-dependent `release-notes.any`. Install the
+`release-notes` package itself, not those.
 
-Every command takes the repository owner and name, then `--version`.
+## Quick start
+
+```console
+$ release-notes generate elastic apm-agent-dotnet --version 1.11.0 --uncategorized-header "Other changes"
+https://github.com/elastic/apm-agent-dotnet/compare/1.10.0...1.11.0
+
+## New Features
+
+- #1239 Add Cosmos DB support  (issue: #1154)
+- #1310 Implement config to ignore the sampled flag in traceparent
+
+## Other changes
+
+- #1302 Prefer W3C traceparent over elastic-apm-traceparent
+
+### [View the full list of issues and PRs](https://github.com/elastic/apm-agent-dotnet/issues?utf8=%E2%9C%93&q=label%3Av1.11.0)
+```
+
+Every command takes the repository owner and name, then `--version`:
 
 | Command | What it does |
 |---|---|
@@ -23,9 +47,13 @@ Every command takes the repository owner and name, then `--version`.
 
 `--token` authenticates with GitHub (anonymous otherwise, which a long issue list can exhaust). `--label
 <label>=<heading>` maps a label to a section, and defaults to bug, enhancement and documentation. `--format` is
-`Markdown` or `AsciiDoc`; `--release-tag-format` and `--release-label-format` set how tags and version labels are
+`markdown` or `asciidoc`; `--release-tag-format` and `--release-label-format` set how tags and version labels are
 spelled, with `VERSION` standing for the version.
 
-On Linux, Windows and macOS (arm64) the tool installs as a native-AOT binary; elsewhere it falls back to a
-framework-dependent build. It also runs as a container (`ghcr.io/nullean/release-notes`) and as a GitHub Action: see
-https://github.com/nullean/release-notes.
+It also runs as a GitHub Action (`uses: nullean/release-notes@main`) and as a container
+(`ghcr.io/nullean/release-notes`), both without a .NET SDK.
+
+## Learn more
+
+- Source, GitHub Action and container usage: https://github.com/nullean/release-notes
+- Releases: https://github.com/nullean/release-notes/releases

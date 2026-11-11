@@ -1,140 +1,137 @@
-<p>
-<img align="right" src="nuget-icon.png">  
-
-# release-notes
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nullean/nullean.github.io/main/assets/nullean-lockup-544x192.png">
+    <img src="https://raw.githubusercontent.com/nullean/nullean.github.io/main/assets/nullean-lockup-light-544x192.png" width="272" alt="nullean">
+  </picture>
 </p>
 
-Generate release notes for a release based on github labels and closed issues and PR's
+<h1 align="center">release-notes</h1>
 
-## Installation
+<p align="center">Write release notes for a GitHub repository from the issues and pull requests labelled with the version you are releasing, grouped by their other labels.</p>
 
-Distributed as a .NET tool so install using the following
+<p align="center">
+  <a href="https://www.nuget.org/packages/release-notes"><img src="https://img.shields.io/nuget/v/release-notes?style=flat-square" alt="NuGet"></a>
+  <a href="https://github.com/nullean/release-notes/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/nullean/release-notes/ci.yml?branch=main&style=flat-square&label=ci" alt="CI"></a>
+</p>
 
+The release notes for elastic/apm-agent-dotnet 1.11.0, from the three pull requests labelled `v1.11.0`. The previous
+release is found on its own:
+
+```console
+$ release-notes generate elastic apm-agent-dotnet --version 1.11.0 --uncategorized-header "Other changes"
+https://github.com/elastic/apm-agent-dotnet/compare/1.10.0...1.11.0
+
+## New Features
+
+- #1239 Add Cosmos DB support  (issue: #1154)
+- #1310 Implement config to ignore the sampled flag in traceparent
+
+## Other changes
+
+- #1302 Prefer W3C traceparent over elastic-apm-traceparent
+
+### [View the full list of issues and PRs](https://github.com/elastic/apm-agent-dotnet/issues?utf8=%E2%9C%93&q=label%3Av1.11.0)
 ```
-dotnet tool install release-notes
+
+## Install
+
+```sh
+dotnet tool install --global release-notes
 ```
 
-On Linux, Windows and macOS/arm64, this resolves to a self-contained native-AOT executable — no
-shared .NET runtime required, and no first-run JIT warmup. Everywhere else, it falls back to a
-framework-dependent build (requires the .NET runtime the tool targets to already be installed).
+On Linux (x64, arm64), Windows (x64, arm64) and macOS (arm64) this installs a self-contained native-AOT executable: no
+shared .NET runtime, no JIT warm-up. Everywhere else it falls back to a framework-dependent build, which needs the .NET
+runtime installed.
 
-## GitHub Action
+## Quick start
+
+```sh
+release-notes generate nullean my-repo --version 1.2.3 --token "$GITHUB_TOKEN" \
+  --label "bug=Bug Fixes" --label "enhancement=New Features" --output release-notes-VERSION.md
+```
+
+Every command takes the repository owner and name, then `--version`, and needs the command named:
+
+| Command | What it does |
+|---|---|
+| `generate` | prints the release notes, and writes them to `--output` too when given |
+| `create-release` | creates or updates the GitHub release for the tag, with the `--body` files (repeatable) as its notes, and adds the version labels for the next release |
+| `apply-labels` | adds the version labels for the next major, minor and patch release, and backport labels with `--backport-label-format` |
+| `find-previous` | prints the release before `--version` |
+| `current-version` | prints the current and the next version on separate lines for a `--query`: `M.N` (next patch), `M.x` (next minor) or `main`/`master` (next major) |
+
+```console
+$ release-notes find-previous elastic apm-agent-dotnet --version 1.11.0
+1.10.0
+$ release-notes current-version elastic apm-agent-dotnet --version 1.11.0 --query 1.x
+1.14.1
+1.15.0
+```
+
+Shared options:
+
+| Option | What |
+|---|---|
+| `--token` | the GitHub token; anonymous otherwise, which a long issue list can exhaust |
+| `--label <label>=<heading>` | map a label to a section (repeatable); replaces the default `bug=Bug Fixes`, `enhancement=New Features`, `documentation=Documentation Improvements` |
+| `--uncategorized-header` | the heading for issues and pull requests none of the labels match |
+| `--old-version` | the release to start from, instead of the one before `--version` |
+| `--release-tag-format`, `--release-label-format` | how tags (`VERSION`) and version labels (`vVERSION`) are spelled; `VERSION` stands for the version |
+| `--format` | `markdown` (default) or `asciidoc` |
+| `--output` | also write the notes to this file; `VERSION` stands for the version |
+
+With `--format asciidoc` nothing goes to standard out: `--output` is a directory, which gets
+`release-notes-<version>-generated.asciidoc`, an empty `release-notes-<version>-human.asciidoc` for your own words (kept
+if it exists), `release-notes-<version>.asciidoc` including both, and a `release-notes.asciidoc` index of the minor's
+patch releases.
+
+### GitHub Action
 
 ```yaml
 - uses: nullean/release-notes@main
   with:
     command: generate
     owner: nullean
-    repo: release-notes
-    args: --version 1.0.0
+    repo: my-repo
+    args: --version 1.2.3 --token ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Runs `release-notes` from a pre-built, distroless container (`ghcr.io/nullean/release-notes`) — no .NET
-SDK install needed in the workflow. `command` is one of `generate`, `apply-labels`, `find-previous`,
-`current-version`, or `create-release`; extra flags pass through verbatim via `args`. Linux runners only
-(`ubuntu-latest` and similar) — container actions can't run on Windows or macOS runners.
+The action runs `release-notes <command> <owner> <repo> <args>` in the prebuilt, distroless
+`ghcr.io/nullean/release-notes:edge` container, so the workflow needs no .NET SDK. `command` is any of the commands
+above; `args` passes through verbatim. Container actions run on Linux runners only.
 
-## Container image
+### Container
 
-`ghcr.io/nullean/release-notes` also works as a general-purpose container, outside GitHub Actions —
-GitLab CI, a local machine without the .NET SDK, anywhere `docker run` works:
+The same image works anywhere `docker run` does, such as GitLab CI or a machine without the .NET SDK:
 
 ```sh
-docker run --rm ghcr.io/nullean/release-notes:edge generate nullean release-notes --version 1.0.0 --token "$GITHUB_TOKEN"
+docker run --rm ghcr.io/nullean/release-notes:edge generate nullean my-repo --version 1.2.3 --token "$GITHUB_TOKEN"
 ```
 
-Distroless: native-AOT, chiseled `runtime-deps` base, no shell, runs as a non-root user. Tags follow
-`release-notes`'s own releases — `edge` tracks the latest commit on `main`, `latest` and a semver tag
-(e.g. `0.10.0`) follow tagged releases.
+It is native-AOT on a chiseled `runtime-deps` base, with no shell, running as a non-root user. `edge` tracks the latest
+build of `main`; `latest` and the version tags (for example `0.11.5`) follow releases.
 
-## Run
+### Upgrading from 0.10 and earlier
 
-```bat
-dotnet release-notes <command> <owner> <repository-name> --version <string> [options]
-```
+0.11.0 moved the CLI onto [Nullean.Argh](https://github.com/nullean/argh), which is a breaking change:
 
-You can omit `dotnet` if you install this as a global tool.
+- the command is always named: `release-notes <owner> <repo> ...` without `generate` no longer works;
+- `--label` takes one `<label>=<heading>` token instead of two;
+- every flag is kebab-case (`--oldversion` is now `--old-version`).
 
-> [!IMPORTANT]
-> Starting from `1.0.0`, every invocation requires an explicit command name (`generate`,
-> `apply-labels`, `find-previous`, `current-version` or `create-release`) — there is no longer a bare
-> `release-notes <owner> <repo> ...` shorthand for `generate`. `--label` also changes from two tokens
-> (`--label <label> <description>`) to one combined token (`--label <label>=<description>`), and every
-> other flag moves from a single word to kebab-case (e.g. `--oldversion` → `--old-version`). This is a
-> breaking change from earlier `0.x` releases, a side effect of moving off `Argu` (which no longer
-> worked once this tool was AOT-compiled) onto [`Nullean.Argh`](https://github.com/nullean/argh).
+## Packages
 
-```bat
-Usage: release-notes <namespace|command> [options]
+The tool ships as one package per platform. Install the root package; the .NET SDK picks the right one.
 
-Commands:
-  apply-labels     Creates the version and backport labels for the next release.
-  create-release   Makes sure the tag exists as a release on GitHub, and
-                   introduces new version labels for the next major/minor/patch.
-  current-version  Given a search query, finds the current and the next versions
-                   and prints them on separate lines.
-  find-previous    Finds and prints the previous release for the given version.
-  generate         Generates release notes for version from closed GitHub issues
-                   and PRs, printed to standard out and optionally written to a
-                   file.
-```
+| Package | What it is | |
+|---|---|---|
+| [`release-notes`](src/release-notes/README.md) | the tool; points the SDK at the package for your platform | [![NuGet](https://img.shields.io/nuget/v/release-notes?style=flat-square)](https://www.nuget.org/packages/release-notes) |
+| `release-notes.<rid>` | the native-AOT build for `linux-x64`, `linux-arm64`, `win-x64`, `win-arm64` and `osx-arm64` | [![NuGet](https://img.shields.io/nuget/v/release-notes.linux-x64?style=flat-square)](https://www.nuget.org/packages/release-notes.linux-x64) |
+| `release-notes.any` | the framework-dependent fallback (net8.0, net10.0) for every other platform | [![NuGet](https://img.shields.io/nuget/v/release-notes.any?style=flat-square)](https://www.nuget.org/packages/release-notes.any) |
 
-Every command takes the same `<owner> <repository-name>` positionals and shared options:
+## Learn more
 
-```bat
-Arguments:
-  <owner>            GitHub repository owner.
-  <repository-name>  GitHub repository name.
+- [Releases](https://github.com/nullean/release-notes/releases)
+- [Contributing](https://github.com/nullean/.github/blob/main/CONTRIBUTING.md)
 
-Options:
-  --version <string>                [required] Version that is being released.
-  --token <string>                  The GitHub token to use. If the issue list is long this may be necessary; defaults to anonymous.
-  --old-version <string>            The previous version to generate release notes since. Optional; the tool will find the previous release.
-  --release-tag-format <string>     The release tag format. VERSION is replaced by the actual version. [default: VERSION]
-  --release-label-format <string>   The release label format. VERSION is replaced by the actual version. [default: vVERSION]
-  --backport-label-format <string>  The backport label format, e.g. "Backport BRANCH". BRANCH is calculated from the version.
-  --format <enum>                   The format in which to print the results: Markdown or AsciiDoc. [default: markdown]
-  --uncategorized-header <string>   The header to use in the markdown for uncategorized issues/PRs.
-  --label <values>                  [repeatable] Map a GitHub label to a categorization heading, formatted as <label>=<description>. May be given
-                                     more than once. Defaults to bug=Bug Fixes, enhancement=New Features, documentation=Documentation Improvements.
-  --output <string>                 Write the release notes to a file as well as standard out. VERSION is replaced by the actual version.
-```
-
-#### Examples
-
-Generate markdown release notes to standard out (and print to a file with `--output`):
-
-```bat
-dotnet release-notes generate nullean release-notes --version 1.0.0
-```
-
-Find the previous release for a version:
-
-```bat
-dotnet release-notes find-previous nullean release-notes --version 1.0.0
-```
-
-Given a search query (`M.N`, `M.x`, or `master`/`main`), print the current and next version on separate lines:
-
-```bat
-dotnet release-notes current-version nullean release-notes --version 1.0.0 --query master
-```
-
-Create the version and backport labels for the next release:
-
-```bat
-dotnet release-notes apply-labels nullean release-notes --version 1.0.0 --backport-label-format "Backport BRANCH"
-```
-
-Make sure the tag exists as a release on GitHub, using one or more files for the release body, and
-introduce new version labels for the next major/minor/patch:
-
-```bat
-dotnet release-notes create-release nullean release-notes --version 1.0.0 --body notes.md --body breaking-changes.md --token $GITHUB_TOKEN
-```
-
-Map GitHub labels to custom categorization headings (replaces the default bug/enhancement/documentation set):
-
-```bat
-dotnet release-notes generate nullean release-notes --version 1.0.0 --label bug=Bug Fixes --label enhancement=New Features
-```
+MIT licensed. Copyright Nullean and contributors.
