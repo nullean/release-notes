@@ -43,10 +43,13 @@ jobs:
         env:
           RID: ${{ matrix.rid }}
 
-      # Trimming breaks only the native-AOT binary (#47), so read real releases and issues with it
+      # Trimming breaks only the native-AOT binary (#47), so read real releases and issues with it. The token is for
+      # the rate limit: anonymous requests count against the runner's address, which other jobs share.
       - run: ./build.sh smokeaot -s
         name: Run the native-AOT binary against GitHub
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       # Container image, linux-x64 only for now — the platform every GitHub-hosted Linux runner
       # already matches. No --push here and no registry login on this leg, so this only proves the
