@@ -47,6 +47,8 @@ jobs:
       - run: ./build.sh smokeaot -s
         name: Run the native-AOT binary against GitHub
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }} # read-only; hosted runners share IPs, so the anonymous limit runs out
 
       # Container image, linux-x64 only for now — the platform every GitHub-hosted Linux runner
       # already matches. No --push here and no registry login on this leg, so this only proves the
