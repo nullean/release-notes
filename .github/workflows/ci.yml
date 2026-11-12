@@ -43,6 +43,11 @@ jobs:
         env:
           RID: ${{ matrix.rid }}
 
+      # Trimming breaks only the native-AOT binary (#47), so read real releases and issues with it
+      - run: ./build.sh smokeaot -s
+        name: Run the native-AOT binary against GitHub
+        shell: bash
+
       # Container image, linux-x64 only for now — the platform every GitHub-hosted Linux runner
       # already matches. No --push here and no registry login on this leg, so this only proves the
       # container build itself still works: AOT compiles, the chiseled base image resolves, and the
