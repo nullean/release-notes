@@ -7,9 +7,7 @@
   <ItemGroup>
     <PackageVersion Include="MinVer" Version="8.0.0" />
     <PackageVersion Include="Nullean.Argh" Version="0.30.0" />
-    <!-- NuGet.Versioning 8 targets only net10.0 and net472: net8.0 would fall back to the .NET Framework build (NU1701) -->
-    <PackageVersion Include="NuGet.Versioning" Version="8.0.0" Condition="'$(TargetFramework)' != 'net8.0'" />
-    <PackageVersion Include="NuGet.Versioning" Version="7.9.0" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageVersion Include="NuGet.Versioning" Version="8.0.0" />
     <PackageVersion Include="Octokit" Version="14.0.0" />
   </ItemGroup>
 

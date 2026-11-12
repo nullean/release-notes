@@ -127,7 +127,7 @@ The tool ships as one package per platform. Install the root package; the .NET S
 |---|---|---|
 | [`release-notes`](src/release-notes/README.md) | the tool; points the SDK at the package for your platform | [![NuGet](https://img.shields.io/nuget/v/release-notes?style=flat-square)](https://www.nuget.org/packages/release-notes) |
 | `release-notes.<rid>` | the native-AOT build for `linux-x64`, `linux-arm64`, `win-x64`, `win-arm64` and `osx-arm64` | [![NuGet](https://img.shields.io/nuget/v/release-notes.linux-x64?style=flat-square)](https://www.nuget.org/packages/release-notes.linux-x64) |
-| `release-notes.any` | the framework-dependent fallback (net8.0, net10.0) for every other platform | [![NuGet](https://img.shields.io/nuget/v/release-notes.any?style=flat-square)](https://www.nuget.org/packages/release-notes.any) |
+| `release-notes.any` | the framework-dependent fallback (net10.0, net11.0) for every other platform | [![NuGet](https://img.shields.io/nuget/v/release-notes.any?style=flat-square)](https://www.nuget.org/packages/release-notes.any) |
 
 ## Learn more
 

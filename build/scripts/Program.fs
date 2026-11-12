@@ -107,13 +107,13 @@ let main argv =
         // works, with no ghcr.io credentials configured there. Only the build job, which does log in, passes
         // --push.
         | Publishcontainers -> target [] {
-              let baseImage = "mcr.microsoft.com/dotnet/runtime-deps:10.0-noble-chiseled"
+              let baseImage = "mcr.microsoft.com/dotnet/runtime-deps:11.0-resolute-chiseled"
               // MSBuild reads the quotes: without them the tags' `;` would split the property
               let tags = $"ContainerImageTags=\"{Packaging.containerImageTags Versions.current.Value}\""
               if push.Value then
-                  sh $"dotnet publish {toolProject} -c Release -f net10.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001 -p ContainerRegistry=ghcr.io"
+                  sh $"dotnet publish {toolProject} -c Release -f net11.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001 -p ContainerRegistry=ghcr.io"
               else
-                  sh $"dotnet publish {toolProject} -c Release -f net10.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001" }
+                  sh $"dotnet publish {toolProject} -c Release -f net11.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001" }
 
         // The framework-dependent build cannot catch what trimming breaks: #47 broke only the native-AOT binary, where
         // Octokit's reflection-based JSON returned nothing or threw. So this publishes that binary and reads releases
@@ -124,7 +124,7 @@ let main argv =
               let rid = RuntimeInformation.RuntimeIdentifier
               let publishDirectory = Path.Combine(Paths.Output.FullName, "aot-smoke")
               let publish = Paths.RootRelative publishDirectory
-              sh $"dotnet publish {toolProject} -c Release -f net10.0 -r {rid} -o {publish}"
+              sh $"dotnet publish {toolProject} -c Release -f net11.0 -r {rid} -o {publish}"
               let executable = if OperatingSystem.IsWindows() then $"{Paths.ToolName}.exe" else Paths.ToolName
               let binary = Paths.RootRelative <| Path.Combine(publishDirectory, executable)
               // Make.Fs quotes each interpolated hole as one argument, so --token stays in the command text
