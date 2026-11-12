@@ -309,10 +309,7 @@ public static class ReleaseNotesRunner
 
 	public static async Task<int> Run(ReleaseNotesConfig config)
 	{
-		var client = new GitHubClient(new ProductHeaderValue("ReleaseNotesGenerator"))
-		{
-			Credentials = config.Token is { } token ? new Credentials(token) : Credentials.Anonymous
-		};
+		var client = OctokitClient.Create(config.Token);
 
 		try
 		{

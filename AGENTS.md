@@ -58,6 +58,10 @@ one release label. This repository's own releases do not run the tool: release-d
   builds rely on. Removing or renaming any of it is a breaking change.
 - Octokit's reflection-based JSON is unreliable under native AOT (see the remarks on `GitHubReleaseClient`). Request
   bodies go through `GitHubJsonContext`, and writes are idempotent upserts rather than check-then-create.
+- Reads still go through Octokit. The csproj roots the Octokit assembly for the AOT build, and `OctokitClient` keeps the
+  `List<T>` and `StringEnum<T>` constructors its JSON makes by reflection (#47). Reading a new Octokit model can need a
+  new `StringEnum<T>` there. `./build.sh smokeaot` publishes the AOT binary and reads real releases and issues with it;
+  CI's `aot-pack` job runs it on each RID it builds.
 - Build targets are Make.Fs `target { }` blocks in `build/scripts/Program.fs` whose commands are Proc.Fs `sh $"…"`
   lines; values come from `text` inside `shell { }` (`Versions.fs`). Do not call the C# `ProcNet` API from the build.
   CI calls targets by name (`./build.sh generatepackages -s`): keep multi-word case names as one word.
