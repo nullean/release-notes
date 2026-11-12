@@ -127,23 +127,25 @@ let main argv =
               sh $"dotnet publish {toolProject} -c Release -f net10.0 -r {rid} -o {publish}"
               let executable = if OperatingSystem.IsWindows() then $"{Paths.ToolName}.exe" else Paths.ToolName
               let binary = Paths.RootRelative <| Path.Combine(publishDirectory, executable)
-              let auth =
-                  match Environment.GetEnvironmentVariable "GITHUB_TOKEN" with
-                  | null | "" -> ""
-                  | token -> $" --token {token}"
+              // Make.Fs quotes each interpolated hole as one argument, so --token stays in the command text
+              let token = Environment.GetEnvironmentVariable "GITHUB_TOKEN"
+              let run (args: string list) =
+                  match token with
+                  | null | "" -> text $"{binary} {args}"
+                  | t -> text $"{binary} {args} --token {t}"
               // checked one command at a time and stopping at the first failure, so a broken binary spends few requests
               let check (command: string) (result: string) (expected: string list) =
                   printfn "%s %s:\n%s" Paths.ToolName command result
                   for line in expected do
                       if not (result.Contains line) then failwithf "the native-AOT binary's %s did not print '%s'" command line
               // the latest release, then every page of releases: one object, then lists
-              let! previous = text $"{binary} find-previous elastic apm-agent-dotnet --version 1.11.0{auth}"
+              let! previous = run [ "find-previous"; "elastic"; "apm-agent-dotnet"; "--version"; "1.11.0" ]
               check "find-previous" previous [ "1.10.0" ]
               // every page of releases again, then one release by its tag
-              let! current = text $"{binary} current-version elastic apm-agent-dotnet --query 1.11 --version 1.11.0{auth}"
+              let! current = run [ "current-version"; "elastic"; "apm-agent-dotnet"; "--query"; "1.11"; "--version"; "1.11.0" ]
               check "current-version" current [ "1.11.1"; "1.11.2" ]
               // issues and pull requests, with their labels and pull request links
-              let! notes = text $"{binary} generate elastic apm-agent-dotnet --version 1.11.0{auth}"
+              let! notes = run [ "generate"; "elastic"; "apm-agent-dotnet"; "--version"; "1.11.0" ]
               check "generate" notes [ "- #1239 Add Cosmos DB support  (issue: #1154)"; "- #1302 Prefer W3C traceparent" ] }
 
     app.RunAsync(argv).GetAwaiter().GetResult()
