@@ -38,6 +38,12 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
 
+  <!-- Octokit reads every GitHub response by reflection, with no trimming annotations: keep its models (#47).
+       OctokitClient keeps the rest of what that reflection needs. -->
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <TrimmerRootAssembly Include="Octokit" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Nullean.Argh" />
     <PackageReference Include="Octokit" />

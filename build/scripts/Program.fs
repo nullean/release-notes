@@ -1,6 +1,8 @@
 module Program
 
+open System
 open System.IO
+open System.Runtime.InteropServices
 open Nullean.Make.Fs
 open Proc.Fs
 
@@ -23,6 +25,8 @@ type Target =
     | Generateapichanges
     /// Publish the native-AOT build as the ghcr.io/nullean/release-notes container image
     | Publishcontainers
+    /// Publish the native-AOT build for this machine and read a public repository's releases and issues with it
+    | Smokeaot
 
 /// build/output, relative to the repository root
 let private output = Paths.RootRelative Paths.Output.FullName
@@ -110,5 +114,31 @@ let main argv =
                   sh $"dotnet publish {toolProject} -c Release -f net10.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001 -p ContainerRegistry=ghcr.io"
               else
                   sh $"dotnet publish {toolProject} -c Release -f net10.0 -r linux-x64 /t:PublishContainer -p DebugType=none -p ContainerBaseImage={baseImage} -p ContainerRepository={Paths.Repository} -p {tags} -p ContainerUser=1001:1001" }
+
+        // The framework-dependent build cannot catch what trimming breaks: #47 broke only the native-AOT binary, where
+        // Octokit's reflection-based JSON returned nothing or threw. So this publishes that binary and reads releases
+        // and issues that no longer change: elastic/apm-agent-dotnet's 1.11.0 and the line around it. It runs
+        // anonymously, as the issue's reproduction did, which costs about 15 of the 60 requests an hour GitHub allows.
+        | Smokeaot -> target [] {
+              let rid = RuntimeInformation.RuntimeIdentifier
+              let publishDirectory = Path.Combine(Paths.Output.FullName, "aot-smoke")
+              let publish = Paths.RootRelative publishDirectory
+              sh $"dotnet publish {toolProject} -c Release -f net10.0 -r {rid} -o {publish}"
+              let executable = if OperatingSystem.IsWindows() then $"{Paths.ToolName}.exe" else Paths.ToolName
+              let binary = Paths.RootRelative <| Path.Combine(publishDirectory, executable)
+              // checked one command at a time and stopping at the first failure, so a broken binary spends few requests
+              let check (command: string) (result: string) (expected: string list) =
+                  printfn "%s %s:\n%s" Paths.ToolName command result
+                  for line in expected do
+                      if not (result.Contains line) then failwithf "the native-AOT binary's %s did not print '%s'" command line
+              // the latest release, then every page of releases: one object, then lists
+              let! previous = text $"{binary} find-previous elastic apm-agent-dotnet --version 1.11.0"
+              check "find-previous" previous [ "1.10.0" ]
+              // every page of releases again, then one release by its tag
+              let! current = text $"{binary} current-version elastic apm-agent-dotnet --query 1.11 --version 1.11.0"
+              check "current-version" current [ "1.11.1"; "1.11.2" ]
+              // issues and pull requests, with their labels and pull request links
+              let! notes = text $"{binary} generate elastic apm-agent-dotnet --version 1.11.0"
+              check "generate" notes [ "- #1239 Add Cosmos DB support  (issue: #1154)"; "- #1302 Prefer W3C traceparent" ] }
 
     app.RunAsync(argv).GetAwaiter().GetResult()
