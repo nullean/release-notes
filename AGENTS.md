@@ -9,7 +9,7 @@ container (`ghcr.io/nullean/release-notes`) and a GitHub Action (`action.yml`) t
 
 | Path | What |
 |---|---|
-| `src/release-notes` | the tool (net8.0 and net10.0), a `Nullean.Argh` CLI; `ReleaseNotesCommands.cs` holds the commands |
+| `src/release-notes` | the tool (net10.0 and net11.0), a `Nullean.Argh` CLI; `ReleaseNotesCommands.cs` holds the commands |
 | `src/release-notes/GitHubReleaseClient.cs` | the GitHub writes (releases, labels), source-generated JSON instead of Octokit |
 | `build/scripts` | the F# build ([Nullean.Make.Fs](https://www.nuget.org/packages/Nullean.Make.Fs), net11.0) the `mise` tasks and CI call |
 | `build/keys` | the strong-name key the tool's own assembly is signed with |
@@ -17,8 +17,7 @@ container (`ghcr.io/nullean/release-notes`) and a GitHub Action (`action.yml`) t
 
 ## Commands
 
-mise installs the SDK pinned in `global.json` (plus the net10.0 runtime nupkg-validator runs on). Run
-everything through it:
+mise installs the SDK pinned in `global.json`. Run everything through it:
 
 ```bash
 mise run build    # build the solution
