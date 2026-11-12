@@ -92,7 +92,7 @@ let main argv =
               // so NuGetAssemblyProvider would find 0 assemblies there. The portable, signed managed build
               // lives in "release-notes.any" instead.
               // The provider specs are quoted: an unquoted | would pipe.
-              sh $"dotnet assembly-differ 'previous-nuget|{tool}.any|{version}|net10.0' 'directory|src/{tool}/bin/Release/net10.0' --target {tool} -f github-comment --output {output}" }
+              sh $"dotnet assembly-differ diff 'previous-nuget|{tool}.any|{version}|net10.0' 'directory|src/{tool}/bin/Release/net10.0' --target {tool} -f github-comment --output {output}" }
         // Publishes the CLI's native-AOT build as a container image via the .NET SDK's own container
         // support (`dotnet publish -t:PublishContainer`), the same mechanism used for curb — see
         // https://github.com/nullean/curb/pull/72. linux-x64 only for now; a second RID becomes a second
