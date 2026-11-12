@@ -64,4 +64,4 @@ one release label. This repository's own releases do not run the tool: release-d
   CI's `aot-pack` job runs it on each RID it builds.
 - Build targets are Make.Fs `target { }` blocks in `build/scripts/Program.fs` whose commands are Proc.Fs `sh $"…"`
   lines; values come from `text` inside `shell { }` (`Versions.fs`). Do not call the C# `ProcNet` API from the build.
-  CI calls targets by name (`./build.sh generatepackages -s true`): keep multi-word case names as one word.
+  CI calls targets by name (`./build.sh generatepackages -s`): keep multi-word case names as one word.
