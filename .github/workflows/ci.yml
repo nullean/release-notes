@@ -28,7 +28,7 @@ jobs:
     permissions:
       actions: read # read main's ci.yml runs
     steps:
-      - uses: nullean/.github/actions/require-green-main@f9eb30d28e48b3f6b8ff1f4e7dae1d2b7b2d544b # v1.6.0
+      - uses: nullean/.github/actions/require-green-main@e21d5f59405aa7078e51825cd4c407191e28562f # v1.6.1
 
   # On pull requests, only linux-x64 runs, to prove AOT still links without burning the full matrix
   # on packages nobody sees. All five run on a push to main and on a release, where the packages are actually
@@ -53,7 +53,7 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-      - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+      - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
         with:
           cache: false # this workflow publishes what these jobs build; never restore a cache a PR could have written
         env:
@@ -114,7 +114,7 @@ jobs:
         git fetch --prune --unshallow --tags
         echo exit code $?
         git tag --list
-    - uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
+    - uses: jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a # v5.2.10
       with:
         cache: false # this workflow publishes what these jobs build; never restore a cache a PR could have written
       env:
