@@ -3,10 +3,10 @@ module Program
 open System
 open System.IO
 open System.Runtime.InteropServices
-open Nullean.Make.Fs
+open Nullean.Runna.Fs
 open Proc.Fs
 
-/// The build's targets; `./build.sh --help` lists them with these descriptions. Make.Fs turns a case name into
+/// The build's targets; `./build.sh --help` lists them with these descriptions. Runna.Fs turns a case name into
 /// kebab-case, so the multi-word ones are spelled as one word: CI calls `generatepackages`, `publishcontainers`, ...
 type Target =
     /// clean known output locations
@@ -35,7 +35,7 @@ let private toolProject = Paths.RootRelative Paths.ToolProject.FullName
 
 [<EntryPoint>]
 let main argv =
-    let app = MakeApp<Target>("./build.sh", None)
+    let app = RunnaApp<Target>("./build.sh", None)
     let push =
         app.Flag("--push", desc = "publishcontainers only: push the built image to ghcr.io instead of building it into the local Docker daemon")
 
@@ -127,7 +127,7 @@ let main argv =
               sh $"dotnet publish {toolProject} -c Release -f net11.0 -r {rid} -o {publish}"
               let executable = if OperatingSystem.IsWindows() then $"{Paths.ToolName}.exe" else Paths.ToolName
               let binary = Paths.RootRelative <| Path.Combine(publishDirectory, executable)
-              // Make.Fs quotes each interpolated hole as one argument, so --token stays in the command text
+              // Runna.Fs quotes each interpolated hole as one argument, so --token stays in the command text
               let token = Environment.GetEnvironmentVariable "GITHUB_TOKEN"
               let run (args: string list) =
                   match token with
