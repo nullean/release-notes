@@ -11,7 +11,7 @@ container (`ghcr.io/nullean/release-notes`) and a GitHub Action (`action.yml`) t
 |---|---|
 | `src/release-notes` | the tool (net10.0 and net11.0), a `Nullean.Argh` CLI; `ReleaseNotesCommands.cs` holds the commands |
 | `src/release-notes/GitHubReleaseClient.cs` | the GitHub writes (releases, labels), source-generated JSON instead of Octokit |
-| `build/scripts` | the F# build ([Nullean.Make.Fs](https://www.nuget.org/packages/Nullean.Make.Fs), net11.0) the `mise` tasks and CI call |
+| `build/scripts` | the F# build ([Runna.Fs](https://www.nuget.org/packages/Runna.Fs), net11.0) the `mise` tasks and CI call |
 | `build/keys` | the strong-name key the tool's own assembly is signed with |
 | `action.yml` | the GitHub Action: runs the `edge` container image |
 
@@ -63,6 +63,6 @@ one release label. This repository's own releases do not run the tool: release-d
   `List<T>` and `StringEnum<T>` constructors its JSON makes by reflection (#47). Reading a new Octokit model can need a
   new `StringEnum<T>` there. `./build.sh smokeaot` publishes the AOT binary and reads real releases and issues with it;
   CI's `aot-pack` job runs it on each RID it builds.
-- Build targets are Make.Fs `target { }` blocks in `build/scripts/Program.fs` whose commands are Proc.Fs `sh $"…"`
+- Build targets are Runna.Fs `target { }` blocks in `build/scripts/Program.fs` whose commands are Proc.Fs `sh $"…"`
   lines; values come from `text` inside `shell { }` (`Versions.fs`). Do not call the C# `ProcNet` API from the build.
   CI calls targets by name (`./build.sh generatepackages -s`): keep multi-word case names as one word.
